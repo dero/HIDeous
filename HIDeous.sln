@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HIDeous", "HIDeous.csproj", "{00B7B3F0-8ED7-40E5-A2EA-1B691766D22B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{00B7B3F0-8ED7-40E5-A2EA-1B691766D22B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00B7B3F0-8ED7-40E5-A2EA-1B691766D22B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00B7B3F0-8ED7-40E5-A2EA-1B691766D22B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00B7B3F0-8ED7-40E5-A2EA-1B691766D22B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {527EB006-F8F1-41F7-95BD-560D315AF311}
+	EndGlobalSection
+EndGlobal
