@@ -12,12 +12,13 @@ public class MainForm : Form
     private Dictionary<IntPtr, TableRow> deviceRows = new();
     private const int WM_INPUT = 0x00FF;
     private const uint RIM_TYPEKEYBOARD = 1;
+    private NotifyIcon trayIcon;
+    private ContextMenuStrip trayMenu;
 
     public class TableRow
     {
-        public CheckBox Override { get; set; }
-        public TextBox CustomName { get; set; }
-        public Label DeviceId { get; set; }
+        public Label Name { get; set; }
+        public TextBox DeviceId { get; set; }
         public Label Keycode { get; set; }
 
         // For handling the flash effect
@@ -26,9 +27,8 @@ public class MainForm : Form
 
         public TableRow()
         {
-            Override = new CheckBox() { Dock = DockStyle.Fill, AutoSize = true, TextAlign = ContentAlignment.MiddleCenter };
-            CustomName = new TextBox() { Dock = DockStyle.Fill, TextAlign = HorizontalAlignment.Center };
-            DeviceId = new Label() { Dock = DockStyle.Fill, AutoSize = true, TextAlign = ContentAlignment.MiddleCenter };
+            Name = new Label() { Dock = DockStyle.Fill, AutoSize = true, TextAlign = ContentAlignment.MiddleCenter };
+            DeviceId = new TextBox() { Dock = DockStyle.Fill, AutoSize = true, TextAlign = HorizontalAlignment.Center, ReadOnly = true, BorderStyle = BorderStyle.None };
             Keycode = new Label() { Dock = DockStyle.Fill, AutoSize = true, TextAlign = ContentAlignment.MiddleCenter };
 
             // Setup flash timer
@@ -53,29 +53,27 @@ public class MainForm : Form
 
     public MainForm()
     {
-        Text = "Keyboard Mapper";
+        Text = "HIDeous";
         Size = new Size(800, 300);
 
         // Create main table layout
         table = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 4,
-            RowCount = 1, // Header row
+            ColumnCount = 3,
+            RowCount = 2, // Header row + empty row
             CellBorderStyle = TableLayoutPanelCellBorderStyle.Single
         };
 
         // Configure columns
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70)); // Override
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));  // Custom Name
+        table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));  // Name
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));  // Device ID
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));  // Keycode
 
         // Add headers
-        AddHeader("Override", 0);
-        AddHeader("Custom Name", 1);
-        AddHeader("Device ID", 2);
-        AddHeader("Keycode", 3);
+        AddHeader("Name", 0);
+        AddHeader("Device ID", 1);
+        AddHeader("Keycode", 2);
 
         Controls.Add(table);
 
@@ -84,6 +82,47 @@ public class MainForm : Form
 
         // Find and list keyboards
         ListKeyboards();
+
+        // Initialize tray icon and menu
+        trayMenu = new ContextMenuStrip();
+        trayMenu.Items.Add("Restore", null, OnRestore);
+        trayMenu.Items.Add("Exit", null, OnExit);
+
+        trayIcon = new NotifyIcon
+        {
+            Text = "HIDEous",
+            Icon = new Icon("Resources/appicon.ico"),
+            ContextMenuStrip = trayMenu,
+            Visible = true
+        };
+
+        trayIcon.DoubleClick += (s, e) => OnRestore(s, e);
+
+        // Minimize to tray by default
+        ShowInTaskbar = false;
+    }
+
+    private void OnRestore(object? sender, EventArgs e)
+    {
+        Show();
+        WindowState = FormWindowState.Normal;
+        ShowInTaskbar = true;
+    }
+
+    private void OnExit(object? sender, EventArgs e)
+    {
+        trayIcon.Visible = false;
+        Application.Exit();
+    }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        if (WindowState == FormWindowState.Minimized)
+        {
+            Hide();
+            ShowInTaskbar = false;
+        }
     }
 
     private void RegisterRawInput()
@@ -104,38 +143,64 @@ public class MainForm : Form
 
     private string? GetDeviceName(IntPtr device)
     {
-        uint size = 0;
-        GetRawInputDeviceInfo(device, 0x20000007, IntPtr.Zero, ref size);
-
-        if (size == 0) return null;
-
-        var namePtr = Marshal.AllocHGlobal((int)size);
         try
         {
-            GetRawInputDeviceInfo(device, 0x20000007, namePtr, ref size);
-            string devicePath = Marshal.PtrToStringUni(namePtr) ?? string.Empty;
+            uint size = 0;
+            uint result = GetRawInputDeviceInfo(device, 0x20000007, IntPtr.Zero, ref size);
 
-            // Convert the raw device path into a more readable format
-            // Example input: \\?\HID#VID_046D&PID_C534&MI_00#8&389ab617&0&0000#{884b96c3-56ef-11d1-bc8c-00a0c91405dd}
-            // We'll extract the VID (Vendor ID) and PID (Product ID)
-            if (devicePath.Contains("VID_") && devicePath.Contains("PID_"))
+            if (result == uint.MaxValue)
             {
-                int vidIndex = devicePath.IndexOf("VID_");
-                int pidIndex = devicePath.IndexOf("PID_");
-
-                if (vidIndex != -1 && pidIndex != -1)
-                {
-                    string vid = devicePath.Substring(vidIndex, 8); // VID_XXXX
-                    string pid = devicePath.Substring(pidIndex, 8); // PID_XXXX
-                    return $"Keyboard ({vid} {pid})";
-                }
+                int errorCode = Marshal.GetLastWin32Error();
+                string errorMessage = new System.ComponentModel.Win32Exception(errorCode).Message;
+                MessageBox.Show($"Initial GetRawInputDeviceInfo call failed.\nError code: {errorCode}\nMessage: {errorMessage}");
+                return null;
             }
 
-            return devicePath;
+            IntPtr namePtr = Marshal.AllocHGlobal((int)size * 2);
+            try
+            {
+                result = GetRawInputDeviceInfo(device, 0x20000007, namePtr, ref size);
+
+                if (result == uint.MaxValue)
+                {
+                    int errorCode = Marshal.GetLastWin32Error();
+                    string errorMessage = new System.ComponentModel.Win32Exception(errorCode).Message;
+                    MessageBox.Show($"GetRawInputDeviceInfo call failed.\nError code: {errorCode}\nMessage: {errorMessage}");
+                    return null;
+                }
+
+                string devicePath = Marshal.PtrToStringAuto(namePtr) ?? string.Empty;
+
+                // Convert the raw device path into a more readable format
+                if (devicePath.Contains("VID_") && devicePath.Contains("PID_"))
+                {
+                    int vidIndex = devicePath.IndexOf("VID_");
+                    int pidIndex = devicePath.IndexOf("PID_");
+
+                    if (vidIndex != -1 && pidIndex != -1)
+                    {
+                        string vid = devicePath.Substring(vidIndex, 8); // VID_XXXX
+                        string pid = devicePath.Substring(pidIndex, 8); // PID_XXXX
+                        return $"Keyboard ({vid} {pid})";
+                    }
+                }
+
+                return devicePath;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Exception occurred while getting device name: {ex.Message}");
+                return null;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(namePtr);
+            }
         }
-        finally
+        catch (Exception ex)
         {
-            Marshal.FreeHGlobal(namePtr);
+            MessageBox.Show($"Exception occurred in GetDeviceName: {ex.Message}");
+            return null;
         }
     }
 
@@ -176,8 +241,13 @@ public class MainForm : Form
                 }
             }
         }
+        catch
+        {
+            MessageBox.Show("Failed to list keyboards");
+        }
         finally
         {
+            AddEmptyRow();
             Marshal.FreeHGlobal(deviceList);
         }
     }
@@ -185,8 +255,18 @@ public class MainForm : Form
     private void AddKeyboardRow(IntPtr deviceHandle, string deviceName)
     {
         var row = new TableRow();
-        row.DeviceId.Text = deviceHandle.ToString();
-        row.CustomName.Text = deviceName;
+
+        // Create a TextBox for the DeviceId that is read-only
+        var deviceIdTextBox = new TextBox();
+        deviceIdTextBox.Text = deviceHandle.ToString();
+        deviceIdTextBox.ReadOnly = true;
+        deviceIdTextBox.BorderStyle = BorderStyle.None; // Optional: to make it look like a label
+        deviceIdTextBox.TextAlign = HorizontalAlignment.Center;
+        deviceIdTextBox.Dock = DockStyle.Fill;
+
+
+        row.DeviceId = deviceIdTextBox;
+        row.Name.Text = deviceName;
         row.Keycode.Text = "No key pressed";
 
         // Add new row to table
@@ -194,12 +274,23 @@ public class MainForm : Form
         int rowIndex = table.RowCount - 1;
 
         // Add controls to table
-        table.Controls.Add(row.Override, 0, rowIndex);
-        table.Controls.Add(row.CustomName, 1, rowIndex);
-        table.Controls.Add(row.DeviceId, 2, rowIndex);
-        table.Controls.Add(row.Keycode, 3, rowIndex);
+        table.Controls.Add(row.Name, 0, rowIndex);
+        table.Controls.Add(row.DeviceId, 1, rowIndex);
+        table.Controls.Add(row.Keycode, 2, rowIndex);
 
         deviceRows[deviceHandle] = row;
+    }
+
+    private void AddEmptyRow()
+    {
+        table.RowCount++;
+        int rowIndex = table.RowCount - 1;
+
+        for (int i = 0; i < table.ColumnCount; i++)
+        {
+            var label = new Label { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
+            table.Controls.Add(label, i, rowIndex);
+        }
     }
 
     protected override void WndProc(ref Message message)
@@ -283,7 +374,7 @@ public class MainForm : Form
     [DllImport("user32.dll")]
     private static extern uint GetRawInputDeviceList(IntPtr pRawInputDeviceList, ref uint puiNumDevices, uint cbSize);
 
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    [DllImport("User32.dll", SetLastError = true, CharSet = CharSet.Auto)]
     private static extern uint GetRawInputDeviceInfo(IntPtr hDevice, uint uiCommand, IntPtr pData, ref uint pcbSize);
 
     [DllImport("user32.dll")]
