@@ -61,6 +61,9 @@
         "xstring": "cpp",
         "xtr1common": "cpp",
         "xutility": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "unordered_map": "cpp",
+        "list": "cpp",
+        "xhash": "cpp"
     }
 }
