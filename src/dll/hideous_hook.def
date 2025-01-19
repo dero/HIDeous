@@ -1,0 +1,6 @@
+LIBRARY hideous_hook
+EXPORTS
+    KeyboardProc
+    InstallHook
+    UninstallHook
+    GetHookThreadId

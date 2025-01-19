@@ -1,10 +1,17 @@
 #include <windows.h>
+#include <shlwapi.h>
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <format>
+#include <vector>
+#include <sstream>
 #include <hidusage.h>
-#include "../../src/dll/hideous_hook.h"
+#include "../common/shared_data.h"
+#include "../common/log_util.h"
+#include "../dll/hideous_hook.h"
+
+// Link with Shlwapi.lib
+#pragma comment(lib, "Shlwapi.lib")
 
 // Function pointers for DLL functions
 typedef BOOL (*InstallHookFn)(HWND);
@@ -15,15 +22,6 @@ namespace
     HMODULE g_hookDll = nullptr;
     InstallHookFn g_installHook = nullptr;
     UninstallHookFn g_uninstallHook = nullptr;
-
-    // Get timestamp for message ordering
-    std::string GetTimestamp()
-    {
-        SYSTEMTIME st;
-        GetLocalTime(&st);
-        return std::format("{:02d}:{:02d}:{:02d}.{:03d}",
-                           st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-    }
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -36,8 +34,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     case WM_INPUT:
     {
-        UINT dataSize;
-        GetRawInputData((HRAWINPUT)lParam, RID_INPUT, nullptr, &dataSize, sizeof(RAWINPUTHEADER));
+        UINT dataSize = 0;
+        GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dataSize, sizeof(RAWINPUTHEADER));
 
         if (dataSize > 0)
         {
@@ -49,11 +47,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 RAWINPUT *raw = (RAWINPUT *)rawData.data();
                 if (raw->header.dwType == RIM_TYPEKEYBOARD)
                 {
-                    std::cout << GetTimestamp()
-                              << " WM_INPUT - Device: " << std::hex << raw->header.hDevice
-                              << " Key: 0x" << raw->data.keyboard.VKey
-                              << " Flags: 0x" << raw->data.keyboard.Flags
-                              << std::dec << std::endl;
+                    std::ostringstream ss;
+                    ss << "WM_INPUT - Device: 0x" << std::hex << (UINT64)raw->header.hDevice
+                       << " Key: 0x" << raw->data.keyboard.VKey
+                       << " Flags: 0x" << raw->data.keyboard.Flags << std::dec;
+                    DebugLog(ss.str());
                 }
             }
         }
@@ -62,21 +60,74 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     case WM_HIDEOUS_KEYBOARD_EVENT:
     {
-        std::cout << GetTimestamp()
-                  << " WM_HIDEOUS_KEYBOARD_EVENT - Key: 0x" << std::hex << wParam
-                  << " lParam: 0x" << lParam << std::dec << std::endl;
+        std::ostringstream ss;
+        ss << " WM_HIDEOUS_KEYBOARD_EVENT - Key: 0x" << std::hex << wParam
+           << " lParam: 0x" << lParam << std::dec;
+        DebugLog(ss.str());
+
         break;
     }
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
+bool InstallGlobalHook(HWND hwnd, bool isDebugMode)
+{
+    WCHAR logPath[MAX_PATH] = {0};
+
+    if (isDebugMode)
+    {
+        // Get the executable's directory
+        GetModuleFileName(NULL, logPath, MAX_PATH);
+        PathRemoveFileSpec(logPath);
+        PathAppend(logPath, L"debug.log");
+    }
+
+    HMODULE hDll = LoadLibrary(TEXT("hideous_hook.dll"));
+    if (!hDll)
+    {
+        return false;
+    }
+
+    auto fnInstallHook = (BOOL(*)(HWND, const WCHAR *, BOOL))GetProcAddress(hDll, "InstallHook");
+    if (!fnInstallHook)
+    {
+        FreeLibrary(hDll);
+        return false;
+    }
+
+    if (!fnInstallHook(hwnd, isDebugMode ? logPath : nullptr, isDebugMode))
+    {
+        FreeLibrary(hDll);
+        return false;
+    }
+
+    return true;
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    // Create console for output
-    AllocConsole();
-    FILE *dummy;
-    freopen_s(&dummy, "CONOUT$", "w", stdout);
+    // Parse command line arguments
+    std::vector<std::string> args;
+    std::istringstream iss(lpCmdLine);
+    std::string arg;
+
+    while (iss >> arg)
+    {
+        args.push_back(arg);
+    }
+
+    bool isDebugMode = false;
+    for (const auto &arg : args)
+    {
+        if (arg == "--debug")
+        {
+            isDebugMode = true;
+            break;
+        }
+    }
+
+    InitializeSharedMemory();
 
     // Register window class
     WNDCLASSEX wc = {0};
@@ -87,7 +138,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     if (!RegisterClassEx(&wc))
     {
-        MessageBox(nullptr, TEXT("Window Registration Failed"), TEXT("Error"), MB_ICONERROR);
+        DebugLog("Failed to register window class");
         return 1;
     }
 
@@ -100,7 +151,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     if (!hwnd)
     {
-        MessageBox(nullptr, TEXT("Window Creation Failed"), TEXT("Error"), MB_ICONERROR);
+        DebugLog("Failed to create window");
         return 1;
     }
 
@@ -113,40 +164,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
     {
-        MessageBox(nullptr, TEXT("Failed to register for raw input"), TEXT("Error"), MB_ICONERROR);
+        DebugLog("Failed to register for raw input");
         return 1;
     }
 
     // Load the hook DLL
-    g_hookDll = LoadLibrary(TEXT("hideous_hook.dll"));
-    if (!g_hookDll)
+    if (!InstallGlobalHook(hwnd, isDebugMode))
     {
-        MessageBox(nullptr, TEXT("Failed to load hook DLL"), TEXT("Error"), MB_ICONERROR);
+        DebugLog("Failed to install global keyboard hook");
         return 1;
     }
-
-    // Get function pointers
-    g_installHook = (InstallHookFn)GetProcAddress(g_hookDll, "InstallHook");
-    g_uninstallHook = (UninstallHookFn)GetProcAddress(g_hookDll, "UninstallHook");
-
-    if (!g_installHook || !g_uninstallHook)
-    {
-        MessageBox(nullptr, TEXT("Failed to get DLL function addresses"), TEXT("Error"), MB_ICONERROR);
-        FreeLibrary(g_hookDll);
-        return 1;
-    }
-
-    // Install the hook
-    if (!g_installHook(hwnd))
-    {
-        MessageBox(nullptr, TEXT("Failed to install keyboard hook"), TEXT("Error"), MB_ICONERROR);
-        FreeLibrary(g_hookDll);
-        return 1;
-    }
-
-    std::cout << "Test application started. Press keys to see events.\n"
-              << "Close the window to exit.\n"
-              << "----------------------------------------\n";
 
     // Show window
     ShowWindow(hwnd, nCmdShow);
@@ -160,15 +187,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         DispatchMessage(&msg);
     }
 
-    // Cleanup
-    if (g_uninstallHook)
-    {
-        g_uninstallHook();
-    }
-    if (g_hookDll)
-    {
-        FreeLibrary(g_hookDll);
-    }
+    CleanupSharedMemory();
 
     return 0;
 }
