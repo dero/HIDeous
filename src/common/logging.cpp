@@ -1,5 +1,5 @@
-#include "shared_data.h"
-#include "log_util.h"
+#include "shared.h"
+#include "logging.h"
 #include <windows.h>
 #include <fstream>
 #include <sstream>

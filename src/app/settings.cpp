@@ -5,7 +5,7 @@
 #include <cctype>
 #include <algorithm>
 #include <windows.h>
-#include "../common/log_util.h"
+#include "../common/logging.h"
 
 Settings::Settings()
 {
@@ -15,6 +15,13 @@ Settings::Settings()
 	filePath = std::wstring(exePath).substr(0, pos) + L"\\settings.ini";
 }
 
+/**
+ * Load settings from the settings file.
+ *
+ * The settings file is a simple INI-style file with sections and key-value pairs.
+ * The Devices section contains key-value pairs of device names and device paths.
+ * The other sections contain key-value pairs of key names and key mappings.
+ */
 bool Settings::load()
 {
 	std::ifstream file(filePath);
@@ -64,6 +71,12 @@ bool Settings::load()
 	return true;
 }
 
+/**
+ * Trim whitespace from the beginning and end of a string.
+ *
+ * @param str The string to trim.
+ * @return The trimmed string.
+ */
 std::string Settings::trim(const std::string &str)
 {
 	size_t first = str.find_first_not_of(' ');
@@ -74,6 +87,13 @@ std::string Settings::trim(const std::string &str)
 	return str.substr(first, last - first + 1);
 }
 
+/**
+ * Map of key names to virtual key codes.
+ *
+ * Loosely based on the list of virtual key codes at:
+ *
+ * https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+ */
 std::unordered_map<std::string, WORD> keyMap = {
 	{"SHIFT", VK_SHIFT},
 	{"ALT", VK_MENU},
@@ -189,6 +209,18 @@ std::unordered_map<std::string, WORD> keyMap = {
 	{"'", VK_OEM_7},  // For US standard keyboards
 };
 
+/**
+ * Convert a string key name to a virtual key code.
+ *
+ * The key name can either be a single character,
+ * a key name (e.g. "A", "F1", "CTRL", "SPACE"),
+ * or a hex value (e.g. "0x41").
+ *
+ * @see https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+ *
+ * @param str The string key name to convert.
+ * @return The virtual key code.
+ */
 WORD Settings::stringToVirtualKeyCode(const std::string &str)
 {
 	// Create uppercase version of input string
@@ -228,6 +260,15 @@ WORD Settings::stringToVirtualKeyCode(const std::string &str)
 	return 0;
 }
 
+/**
+ * Convert a string of keys separated by '+' into a vector of INPUT structs.
+ *
+ * Example: "CTRL+ALT+DEL" -> {CTRL down, ALT down, DEL down, DEL up, ALT up, CTRL up}
+ * Example: "CTRL+F4" -> {CTRL down, F4 down, F4 up, CTRL up}
+ *
+ * @param keyString The string of keys to convert.
+ * @return A vector of INPUT structs.
+ */
 std::vector<INPUT> Settings::convertStringToInput(const std::string &keyString)
 {
 	std::vector<INPUT> inputs;
@@ -245,7 +286,7 @@ std::vector<INPUT> Settings::convertStringToInput(const std::string &keyString)
 	{
 		INPUT input = {0};
 		input.type = INPUT_KEYBOARD;
-		input.ki.wVk = keyMap[key];
+		input.ki.wVk = stringToVirtualKeyCode(key);
 		inputs.push_back(input); // Key down
 	}
 
@@ -254,7 +295,7 @@ std::vector<INPUT> Settings::convertStringToInput(const std::string &keyString)
 	{
 		INPUT input = {0};
 		input.type = INPUT_KEYBOARD;
-		input.ki.wVk = keyMap[*it];
+		input.ki.wVk = stringToVirtualKeyCode(*it);
 		input.ki.dwFlags = KEYEVENTF_KEYUP;
 		inputs.push_back(input); // Key up
 	}

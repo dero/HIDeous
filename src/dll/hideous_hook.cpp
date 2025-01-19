@@ -1,7 +1,7 @@
 // src/dll/hideous_hook.cpp
-#include "../common/shared_data.h"
+#include "../common/shared.h"
 #include "hideous_hook.h"
-#include "../common/log_util.h"
+#include "../common/logging.h"
 #include <windows.h>
 #include <fstream>
 #include <sstream>

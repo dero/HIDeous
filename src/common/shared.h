@@ -2,8 +2,8 @@
 
 #include <windows.h>
 
-#ifndef SHARED_DATA_H
-#define SHARED_DATA_H
+#ifndef shared_H
+#define shared_H
 
 struct SharedData
 {
@@ -17,4 +17,4 @@ extern SharedData *g_shared;
 bool InitializeSharedMemory();
 void CleanupSharedMemory();
 
-#endif // SHARED_DATA_H
+#endif // shared_H
