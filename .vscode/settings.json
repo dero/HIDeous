@@ -66,6 +66,8 @@
         "list": "cpp",
         "xhash": "cpp",
         "algorithm": "cpp",
-        "optional": "cpp"
+        "optional": "cpp",
+        "set": "cpp",
+        "xtree": "cpp"
     }
 }

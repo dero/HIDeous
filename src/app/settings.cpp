@@ -7,86 +7,6 @@
 #include <windows.h>
 #include "../common/logging.h"
 
-Settings::Settings()
-{
-	wchar_t exePath[MAX_PATH];
-	GetModuleFileNameW(NULL, exePath, MAX_PATH);
-	std::wstring::size_type pos = std::wstring(exePath).find_last_of(L"\\/");
-	filePath = std::wstring(exePath).substr(0, pos) + L"\\settings.ini";
-}
-
-/**
- * Load settings from the settings file.
- *
- * The settings file is a simple INI-style file with sections and key-value pairs.
- * The Devices section contains key-value pairs of device names and device paths.
- * The other sections contain key-value pairs of key names and key mappings.
- */
-bool Settings::load()
-{
-	std::ifstream file(filePath);
-	if (!file.is_open())
-	{
-		DebugLog("Failed to open settings file");
-		return false;
-	}
-
-	std::string line;
-	std::string currentSection;
-	while (std::getline(file, line))
-	{
-		line = trim(line);
-		if (line.empty() || line[0] == ';')
-		{
-			continue;
-		}
-
-		if (line[0] == '[' && line.back() == ']')
-		{
-			currentSection = line.substr(1, line.size() - 2);
-		}
-		else
-		{
-			auto delimiterPos = line.find('=');
-			if (delimiterPos == std::string::npos)
-			{
-				continue;
-			}
-
-			std::string key = trim(line.substr(0, delimiterPos));
-			std::string value = trim(line.substr(delimiterPos + 1));
-
-			if (currentSection == "Devices")
-			{
-				devices[key] = value;
-			}
-			else
-			{
-				mappings[currentSection][key] = value;
-			}
-		}
-	}
-
-	file.close();
-	return true;
-}
-
-/**
- * Trim whitespace from the beginning and end of a string.
- *
- * @param str The string to trim.
- * @return The trimmed string.
- */
-std::string Settings::trim(const std::string &str)
-{
-	size_t first = str.find_first_not_of(' ');
-	if (first == std::string::npos)
-		return "";
-
-	size_t last = str.find_last_not_of(' ');
-	return str.substr(first, last - first + 1);
-}
-
 /**
  * Map of key names to virtual key codes.
  *
@@ -208,6 +128,115 @@ std::unordered_map<std::string, WORD> keyMap = {
 	{"]", VK_OEM_6},  // For US standard keyboards
 	{"'", VK_OEM_7},  // For US standard keyboards
 };
+
+Settings::Settings()
+{
+	wchar_t exePath[MAX_PATH];
+	GetModuleFileNameW(NULL, exePath, MAX_PATH);
+	std::wstring::size_type pos = std::wstring(exePath).find_last_of(L"\\/");
+	filePath = std::wstring(exePath).substr(0, pos) + L"\\settings.ini";
+}
+
+/**
+ * Load settings from the settings file.
+ *
+ * The settings file is a simple INI-style file with sections and key-value pairs.
+ * The Devices section contains key-value pairs of device names and device paths.
+ * The other sections contain key-value pairs of key names and key mappings.
+ */
+bool Settings::load()
+{
+	std::ifstream file(filePath);
+	if (!file.is_open())
+	{
+		DebugLog("Failed to open settings file");
+		return false;
+	}
+
+	std::string line;
+	std::string currentSection;
+	while (std::getline(file, line))
+	{
+		line = trim(line);
+		if (line.empty() || line[0] == ';')
+		{
+			continue;
+		}
+
+		if (line[0] == '[' && line.back() == ']')
+		{
+			currentSection = line.substr(1, line.size() - 2);
+		}
+		else
+		{
+			auto delimiterPos = line.find('=');
+			if (delimiterPos == std::string::npos)
+			{
+				continue;
+			}
+
+			std::string key = trim(line.substr(0, delimiterPos));
+			std::string value = trim(line.substr(delimiterPos + 1));
+
+			if (currentSection == "Devices")
+			{
+				devices[key] = value;
+			}
+			else
+			{
+				mappings[currentSection][key] = value;
+			}
+		}
+	}
+
+	file.close();
+	return true;
+}
+
+/**
+ * Trim whitespace from the beginning and end of a string.
+ *
+ * @param str The string to trim.
+ * @return The trimmed string.
+ */
+std::string Settings::trim(const std::string &str)
+{
+	size_t first = str.find_first_not_of(' ');
+	if (first == std::string::npos)
+		return "";
+
+	size_t last = str.find_last_not_of(' ');
+	return str.substr(first, last - first + 1);
+}
+
+/**
+ * Convert a virtual key code to its string representation.
+ * Returns the first matching key name from the keyMap.
+ *
+ * @param vk The virtual key code to convert.
+ * @return The string representation of the key, or hexadecimal value in a string.
+ */
+std::string Settings::virtualKeyCodeToString(WORD vk)
+{
+	for (const auto &pair : keyMap)
+	{
+		if (pair.second == vk)
+		{
+			return pair.first;
+		}
+	}
+
+	// Letters and numbers
+	if ((vk >= 0x41 && vk <= 0x5A) || (vk >= 0x30 && vk <= 0x39))
+	{
+		return std::string(1, static_cast<char>(vk));
+	}
+
+	// If no match found, return the hex value as a string
+	std::ostringstream ss;
+	ss << "0x" << std::hex << vk;
+	return ss.str();
+}
 
 /**
  * Convert a string key name to a virtual key code.
