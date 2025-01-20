@@ -98,12 +98,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                      GetSystemMetrics(SM_CYSMICON),
                                      LR_DEFAULTCOLOR);
 
+    if (!hIcon)
+    {
+        DWORD error = GetLastError();
+        WCHAR msg[256];
+        swprintf_s(msg, L"Failed to load large icon. Error: %lu", error);
+        MessageBox(nullptr, msg, TEXT("Error"), MB_OK | MB_ICONERROR);
+        return 1;
+    }
+
     // Register window class
     WNDCLASSEX wc = {0};
     wc.cbSize = sizeof(WNDCLASSEX);
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
-    wc.lpszClassName = TEXT("HIDeous_Test");
+    wc.lpszClassName = TEXT("HIDeous");
     wc.hIcon = hIcon;
     wc.hIconSm = hIconSm;
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
@@ -116,9 +125,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // Create window with fixed size
     HWND hwnd = CreateWindow(
-        TEXT("HIDeous_Test"), TEXT("HIDeous Test"),
-        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-        CW_USEDEFAULT, CW_USEDEFAULT, 640, 300,
+        TEXT("HIDeous"), TEXT("HIDeous"),
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+        CW_USEDEFAULT, CW_USEDEFAULT, 740, 400,
         nullptr, nullptr, hInstance, nullptr);
 
     if (!hwnd)

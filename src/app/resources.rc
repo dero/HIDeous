@@ -1,1 +1,2 @@
+#include "resource.h"
 IDI_APPICON ICON "../assets/hideous.ico"

@@ -8,6 +8,9 @@
 #include "settings.h"
 
 #define IDM_COPY_CELL 1001
+#define IDM_RESTORE 1002
+#define IDM_EXIT 1003
+#define WM_TRAYICON (WM_USER + 1)
 
 // GUI-related structs
 struct KeyboardDevice

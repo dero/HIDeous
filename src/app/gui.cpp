@@ -9,6 +9,7 @@
 #include <hidusage.h>
 #include <wincrypt.h>
 #include <commctrl.h>
+#include <shellapi.h>
 #include "resource.h"
 #include "settings.h"
 #include "../common/shared.h"
@@ -29,6 +30,27 @@ struct LastKeypress
 };
 
 static LastKeypress g_lastKeypress = {0, "", 0, false};
+
+// Tray icon
+static NOTIFYICONDATA g_trayIcon = {0};
+
+void CreateTrayIcon(HWND hwnd)
+{
+	g_trayIcon.cbSize = sizeof(NOTIFYICONDATA);
+	g_trayIcon.hWnd = hwnd;
+	g_trayIcon.uID = 1;
+	g_trayIcon.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+	g_trayIcon.uCallbackMessage = WM_TRAYICON;
+	g_trayIcon.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_APPICON));
+
+	wcscpy_s(g_trayIcon.szTip, L"HIDeous");
+	Shell_NotifyIcon(NIM_ADD, &g_trayIcon);
+}
+
+void RemoveTrayIcon()
+{
+	Shell_NotifyIcon(NIM_DELETE, &g_trayIcon);
+}
 
 std::wstring GetListViewCellText(HWND hList, int row, int col)
 {
@@ -152,11 +174,61 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 	}
 
+	case WM_CREATE:
+		CreateTrayIcon(hwnd);
+		return 0;
+
+	case WM_CLOSE:
+		RemoveTrayIcon();
+		DestroyWindow(hwnd);
+		return 0;
+
+	case WM_SIZE:
+		if (wParam == SIZE_MINIMIZED)
+		{
+			ShowWindow(hwnd, SW_HIDE);
+			return 0;
+		}
+		break;
+
+	case WM_TRAYICON:
+		if (LOWORD(lParam) == WM_RBUTTONUP)
+		{
+			POINT pt;
+			GetCursorPos(&pt);
+			HMENU hMenu = CreatePopupMenu();
+			AppendMenu(hMenu, MF_STRING, IDM_RESTORE, L"Restore");
+			AppendMenu(hMenu, MF_STRING, IDM_EXIT, L"Exit");
+			SetForegroundWindow(hwnd);
+			TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
+			DestroyMenu(hMenu);
+		}
+		else if (LOWORD(lParam) == WM_LBUTTONDBLCLK)
+		{
+			ShowWindow(hwnd, SW_RESTORE);
+			SetForegroundWindow(hwnd);
+		}
+		return 0;
+
 	case WM_COMMAND:
 	{
 		HWND hList = GetDlgItem(hwnd, 0);
 		switch (LOWORD(wParam))
 		{
+		case IDM_RESTORE:
+		{
+			ShowWindow(hwnd, SW_RESTORE);
+			SetForegroundWindow(hwnd);
+			break;
+		}
+
+		case IDM_EXIT:
+		{
+			RemoveTrayIcon();
+			DestroyWindow(hwnd);
+			break;
+		}
+
 		case IDM_COPY_CELL:
 		{
 			int selRow = ListView_GetNextItem(hList, -1, LVNI_SELECTED);
