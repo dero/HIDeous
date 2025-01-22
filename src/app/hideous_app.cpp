@@ -9,8 +9,8 @@
 #include <wincrypt.h>
 #include <commctrl.h>
 #include "resource.h"
-#include "settings.h"
-#include "../common/shared.h"
+#include "../common/settings.h"
+#include "intercept.h"
 #include "../common/crypto.h"
 #include "../common/logging.h"
 #include "../dll/hideous_hook.h"
@@ -24,24 +24,20 @@
 typedef BOOL (*InstallHookFn)(HWND);
 typedef BOOL (*UninstallHookFn)();
 
-namespace
-{
-    HMODULE g_hookDll = nullptr;
-    InstallHookFn g_installHook = nullptr;
-    UninstallHookFn g_uninstallHook = nullptr;
-}
+/**
+ * Structure to hold the last keypress information.
+ *
+ * - timestamp: GetTickCount() value when the key was pressed
+ * - deviceHash: Hash of the device name
+ * - vkCode: Virtual key code of the key pressed
+ */
+LastKeypress g_lastKeypress = {0, "", 0};
+HMODULE g_hookDll = nullptr;
+InstallHookFn g_installHook = nullptr;
+UninstallHookFn g_uninstallHook = nullptr;
 
-bool InstallGlobalHook(HWND hwnd, bool isDebugMode)
+bool InstallGlobalHook()
 {
-    WCHAR logPath[MAX_PATH] = {0};
-
-    if (isDebugMode)
-    {
-        // Get the executable's directory
-        GetModuleFileName(NULL, logPath, MAX_PATH);
-        PathRemoveFileSpec(logPath);
-        PathAppend(logPath, L"debug.log");
-    }
 
     HMODULE hDll = LoadLibrary(TEXT("hideous_hook.dll"));
     if (!hDll)
@@ -49,14 +45,14 @@ bool InstallGlobalHook(HWND hwnd, bool isDebugMode)
         return false;
     }
 
-    auto fnInstallHook = (BOOL(*)(HWND, const WCHAR *, BOOL))GetProcAddress(hDll, "InstallHook");
+    auto fnInstallHook = (BOOL(*)())GetProcAddress(hDll, "InstallHook");
     if (!fnInstallHook)
     {
         FreeLibrary(hDll);
         return false;
     }
 
-    if (!fnInstallHook(hwnd, isDebugMode ? logPath : nullptr, isDebugMode))
+    if (!fnInstallHook())
     {
         FreeLibrary(hDll);
         return false;
@@ -67,27 +63,12 @@ bool InstallGlobalHook(HWND hwnd, bool isDebugMode)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    // Parse command line arguments
-    std::vector<std::string> args;
-    std::istringstream iss(lpCmdLine);
-    std::string arg;
+    // Make sure the settings path is set on every run.
+    wchar_t processPath[MAX_PATH];
+    GetModuleFileName(NULL, processPath, MAX_PATH);
+    PathRemoveFileSpec(processPath);
 
-    while (iss >> arg)
-    {
-        args.push_back(arg);
-    }
-
-    bool isDebugMode = false;
-    for (const auto &arg : args)
-    {
-        if (arg == "--debug")
-        {
-            isDebugMode = true;
-            break;
-        }
-    }
-
-    InitializeSharedMemory();
+    persistSettingsPath(processPath);
 
     // Icons
     HICON hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPICON));
@@ -119,7 +100,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     if (!RegisterClassEx(&wc))
     {
-        DebugLog("Failed to register window class");
+        MessageBox(nullptr, TEXT("Failed to register window class"), TEXT("Error"), MB_OK | MB_ICONERROR);
         return 1;
     }
 
@@ -132,9 +113,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     if (!hwnd)
     {
-        DebugLog("Failed to create window");
+        MessageBox(nullptr, TEXT("Failed to create window"), TEXT("Error"), MB_OK | MB_ICONERROR);
         return 1;
     }
+
+    DebugLog("HIDeous started");
 
     // Set window icons
     SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
@@ -143,12 +126,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Create device table
     HWND hList = CreateDeviceTable(hwnd);
 
-    // Load settings
-    Settings settings;
-    settings.load();
-
     // Populate table
-    UpdateDeviceTable(hList, settings);
+    UpdateDeviceTable(hList);
 
     // Register for raw input
     RAWINPUTDEVICE rid;
@@ -164,7 +143,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
     // Load the hook DLL
-    if (!InstallGlobalHook(hwnd, isDebugMode))
+    if (!InstallGlobalHook())
     {
         DebugLog("Failed to install global keyboard hook");
         return 1;
@@ -181,8 +160,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-
-    CleanupSharedMemory();
 
     return 0;
 }

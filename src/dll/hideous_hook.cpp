@@ -1,56 +1,40 @@
-// src/dll/hideous_hook.cpp
-#include "../common/shared.h"
-#include "hideous_hook.h"
+#include "../common/settings.h"
 #include "../common/logging.h"
+#include "../common/constants.h"
+#include "hideous_hook.h"
 #include <windows.h>
 #include <fstream>
 #include <sstream>
 
-namespace
+HHOOK g_keyboardHook = nullptr;
+HWND g_mainWindow = nullptr;
+
+BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
 {
-    HHOOK g_keyboardHook = nullptr;
-    DWORD g_hookThreadId = 0;
-}
+    wchar_t className[256];
 
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID reserved)
-{
-    switch (reason)
+    // Get the class name of the window
+    GetClassName(hwnd, className, sizeof(className));
+
+    // Check if the class name matches the one used by your application
+    if (wcscmp(className, L"HIDeous") == 0)
     {
-    case DLL_PROCESS_ATTACH:
-    {
-        DisableThreadLibraryCalls(hModule);
-        WCHAR processPath[MAX_PATH];
-        GetModuleFileNameW(NULL, processPath, MAX_PATH);
-
-        DebugLog("DLL loaded into process: " + WideToNarrow(processPath));
-
-        if (!InitializeSharedMemory())
-        {
-            DebugLog("Failed to initialize shared memory");
-            return FALSE;
-        }
-        break;
+        // Found the main window handle
+        g_mainWindow = hwnd;
+        return FALSE; // Stop enumeration
     }
-    case DLL_PROCESS_DETACH:
-        DebugLog("DLL unloaded");
-        CleanupSharedMemory();
-        if (g_keyboardHook)
-        {
-            UninstallHook();
-        }
-        break;
-    }
-    return TRUE;
+
+    return TRUE; // Continue enumeration
 }
 
 extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
 {
-    if (code < 0 || !g_shared)
+    if (code < 0)
     {
         return CallNextHookEx(g_keyboardHook, code, wParam, lParam);
     }
 
-    if (g_shared->isDebugMode)
+    if (getSettings().global.Debug)
     {
         // Log every hook call
         std::ostringstream ss;
@@ -64,41 +48,44 @@ extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
     // Only process keydown events
     if (!(lParam & 0x80000000))
     {
-        HWND targetWnd = g_shared->mainWindow;
-
         // Log target window info
         DWORD targetProcessId = 0;
-        GetWindowThreadProcessId(targetWnd, &targetProcessId);
+        GetWindowThreadProcessId(g_mainWindow, &targetProcessId);
 
-        if (g_shared->isDebugMode)
+        if (getSettings().global.Debug)
         {
             std::ostringstream windowss;
             windowss << "Attempting PostMessage to window 0x"
-                     << std::hex << (DWORD)(UINT_PTR)targetWnd
+                     << std::hex << (DWORD)(UINT_PTR)g_mainWindow
                      << " in process " << std::dec << targetProcessId;
             DebugLog(windowss.str());
         }
 
         // Try to verify if window still exists
-        if (!IsWindow(targetWnd))
+        if (!IsWindow(g_mainWindow))
         {
             DebugLog("Target window is no longer valid!");
             return CallNextHookEx(g_keyboardHook, code, wParam, lParam);
         }
 
-        BOOL result = PostMessage(
-            targetWnd,
+        DWORD_PTR decision = KEY_DECISION_LET_THROUGH;
+
+        LRESULT sendResult = SendMessageTimeout(
+            g_mainWindow,
             WM_HIDEOUS_KEYBOARD_EVENT,
             wParam,
-            lParam);
+            lParam,
+            SMTO_ABORTIFHUNG | SMTO_NORMAL,
+            getSettings().global.KeyWaitTime,
+            &decision);
 
-        if (!result)
+        if (!sendResult)
         {
-            if (g_shared->isDebugMode)
+            if (getSettings().global.Debug)
             {
                 DWORD error = GetLastError();
                 std::ostringstream errss;
-                errss << "PostMessage failed with error: " << error;
+                errss << "SendMessageTimeout failed with error: " << error;
                 DebugLog(errss.str());
             }
         }
@@ -106,42 +93,39 @@ extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
         {
             DebugLog("PostMessage succeeded");
         }
+
+        if (decision == KEY_DECISION_BLOCK)
+        {
+            return 1;
+        }
     }
 
     return CallNextHookEx(g_keyboardHook, code, wParam, lParam);
 }
 
-HIDEOUS_API BOOL InstallHook(HWND mainWindow, const WCHAR *logPath, BOOL isDebugMode)
+HIDEOUS_API BOOL InstallHook()
 {
-    if (!mainWindow || g_keyboardHook || !g_shared)
+    EnumWindows(EnumWindowsProc, NULL);
+
+    if (g_mainWindow == nullptr)
     {
+        DebugLog("Main window not found, aborting hook installation");
         return FALSE;
     }
 
-    // Store the configuration in shared memory
-    g_shared->mainWindow = mainWindow;
-    g_shared->isDebugMode = isDebugMode;
-
-    if (isDebugMode && logPath)
-    {
-        wcscpy_s(g_shared->logPath, MAX_PATH, logPath);
-    }
-
     // Log initial hook installation
-    if (isDebugMode)
+    if (getSettings().global.Debug)
     {
         // Log information about the target window
         DWORD targetProcessId = 0;
-        DWORD targetThreadId = GetWindowThreadProcessId(mainWindow, &targetProcessId);
+        DWORD targetThreadId = GetWindowThreadProcessId(g_mainWindow, &targetProcessId);
 
         std::ostringstream ss;
-        ss << "Installing hook with target window 0x" << std::hex << (DWORD)(UINT_PTR)mainWindow
+        ss << "Installing hook with target window 0x" << std::hex << (DWORD)(UINT_PTR)g_mainWindow
            << " in process " << std::dec << targetProcessId
            << " thread " << targetThreadId;
         DebugLog(ss.str());
     }
-
-    g_hookThreadId = GetCurrentThreadId();
 
     g_keyboardHook = SetWindowsHookEx(
         WH_KEYBOARD,
@@ -152,7 +136,7 @@ HIDEOUS_API BOOL InstallHook(HWND mainWindow, const WCHAR *logPath, BOOL isDebug
 
     if (!g_keyboardHook)
     {
-        if (isDebugMode)
+        if (getSettings().global.Debug)
         {
             DWORD error = GetLastError();
             std::ostringstream errss;
@@ -178,12 +162,10 @@ HIDEOUS_API BOOL UninstallHook()
     {
         DebugLog("Hook uninstalled successfully");
         g_keyboardHook = nullptr;
-        g_shared->mainWindow = nullptr;
-        g_hookThreadId = 0;
     }
     else
     {
-        if (g_shared->isDebugMode)
+        if (getSettings().global.Debug)
         {
             DWORD error = GetLastError();
             std::ostringstream ss;
@@ -195,7 +177,33 @@ HIDEOUS_API BOOL UninstallHook()
     return result;
 }
 
-HIDEOUS_API DWORD GetHookThreadId()
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID reserved)
 {
-    return g_hookThreadId;
+    switch (reason)
+    {
+    case DLL_PROCESS_ATTACH:
+    {
+        DisableThreadLibraryCalls(hModule);
+
+        // Find the main window handle every time the DLL is loaded
+        EnumWindows(EnumWindowsProc, NULL);
+
+        WCHAR processPath[MAX_PATH];
+        GetModuleFileNameW(NULL, processPath, MAX_PATH);
+
+        DebugLog("DLL loaded into process: " + WideToNarrow(processPath));
+        DebugLog("Main window handle: 0x" + std::to_string((DWORD)(UINT_PTR)g_mainWindow));
+        DebugLog("Debug mode: " + std::to_string(getSettings().global.Debug));
+
+        break;
+    }
+    case DLL_PROCESS_DETACH:
+        DebugLog("DLL unloaded");
+        if (g_keyboardHook)
+        {
+            UninstallHook();
+        }
+        break;
+    }
+    return TRUE;
 }

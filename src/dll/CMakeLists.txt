@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.15)
 
 add_library(hideous_hook SHARED
-    ../common/shared.h
-    ../common/shared.cpp
     hideous_hook.cpp
     hideous_hook.h
     hideous_hook.def
+    ../common/constants.h
+    ../common/settings.h
+    ../common/settings.cpp
     ../common/logging.h
     ../common/logging.cpp
 )

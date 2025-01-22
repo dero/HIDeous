@@ -14,7 +14,7 @@
 
 extern "C"
 {
-    HIDEOUS_API BOOL InstallHook(HWND targetWindow);
+    HIDEOUS_API LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam);
+    HIDEOUS_API BOOL InstallHook();
     HIDEOUS_API BOOL UninstallHook();
-    HIDEOUS_API DWORD GetHookThreadId();
 }

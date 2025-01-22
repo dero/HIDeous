@@ -129,12 +129,77 @@ std::unordered_map<std::string, WORD> keyMap = {
 	{"'", VK_OEM_7},  // For US standard keyboards
 };
 
-Settings::Settings()
+/**
+ * Saves path to the settings file to Windows registry.
+ */
+bool persistSettingsPath(const std::wstring &path)
 {
-	wchar_t exePath[MAX_PATH];
-	GetModuleFileNameW(NULL, exePath, MAX_PATH);
-	std::wstring::size_type pos = std::wstring(exePath).find_last_of(L"\\/");
-	filePath = std::wstring(exePath).substr(0, pos) + L"\\settings.ini";
+	HKEY hKey;
+	LONG result = RegCreateKeyExW(
+		HKEY_CURRENT_USER, // or HKEY_CURRENT_USER if preferred
+		REG_KEY_PATH,
+		0,
+		NULL,
+		0,
+		KEY_WRITE,
+		NULL,
+		&hKey,
+		NULL);
+
+	if (result != ERROR_SUCCESS)
+	{
+		return false;
+	}
+
+	result = RegSetValueExW(
+		hKey,
+		REG_VALUE_NAME,
+		0,
+		REG_SZ,
+		(BYTE *)path.c_str(),
+		(DWORD)((path.length() + 1) * sizeof(wchar_t)));
+
+	RegCloseKey(hKey);
+	return (result == ERROR_SUCCESS);
+}
+
+/**
+ * Retrieves path to the settings file from Windows registry.
+ */
+std::wstring getAppPath()
+{
+	HKEY hKey;
+	LONG result = RegOpenKeyExW(
+		HKEY_CURRENT_USER,
+		REG_KEY_PATH,
+		0,
+		KEY_READ,
+		&hKey);
+
+	if (result != ERROR_SUCCESS)
+	{
+		return L"";
+	}
+
+	wchar_t path[MAX_PATH];
+
+	DWORD size = MAX_PATH;
+	result = RegQueryValueExW(
+		hKey,
+		REG_VALUE_NAME,
+		NULL,
+		NULL,
+		(BYTE *)path,
+		&size);
+
+	RegCloseKey(hKey);
+
+	if (result != ERROR_SUCCESS)
+	{
+		return L"";
+	}
+
+	return path;
 }
 
 /**
@@ -143,18 +208,26 @@ Settings::Settings()
  * The settings file is a simple INI-style file with sections and key-value pairs.
  * The Devices section contains key-value pairs of device names and device paths.
  * The other sections contain key-value pairs of key names and key mappings.
+ *
+ * Settings are automatically loaded when the Settings object is created.
  */
-bool Settings::load()
+Settings loadSettings()
 {
-	std::ifstream file(filePath);
+	GlobalSettings globalSettings = {DEFAULT_DEBUG_MODE, DEFAULT_DEBUG_FILE, DEFAULT_KEY_WAIT_TIME};
+	Settings settings = {globalSettings, {}, {}};
+
+	std::wstring settingsPath = getAppPath() + L"\\settings.ini";
+	std::ifstream file(settingsPath);
+
 	if (!file.is_open())
 	{
 		DebugLog("Failed to open settings file");
-		return false;
+		return settings;
 	}
 
 	std::string line;
 	std::string currentSection;
+
 	while (std::getline(file, line))
 	{
 		line = trim(line);
@@ -180,17 +253,51 @@ bool Settings::load()
 
 			if (currentSection == "Devices")
 			{
-				devices[key] = value;
+				settings.devices[key] = value;
+			}
+			else if (currentSection == "Global")
+			{
+				if (key == "KeyWaitTime")
+				{
+					settings.global.KeyWaitTime = std::stoi(value);
+				}
+				else if (key == "Debug")
+				{
+					settings.global.Debug = (value == "true" || value == "1");
+				}
+				else if (key == "DebugFile")
+				{
+					settings.global.DebugFile = std::wstring(value.begin(), value.end());
+				}
 			}
 			else
 			{
-				mappings[currentSection][key] = value;
+				// Convert key to uppercase in order to make the mapping case-insensitive
+				// and match the key names in the keyMap
+				std::string uCaseKey = key;
+				std::transform(uCaseKey.begin(), uCaseKey.end(), uCaseKey.begin(), ::toupper);
+
+				settings.mappings[currentSection][uCaseKey] = value;
 			}
 		}
 	}
 
 	file.close();
-	return true;
+
+	return settings;
+}
+
+/**
+ * Get the current settings.
+ *
+ * The settings are loaded from the settings file the first time this function is called.
+ *
+ * @return The current settings.
+ */
+Settings getSettings()
+{
+	static Settings settings = loadSettings();
+	return settings;
 }
 
 /**
@@ -199,7 +306,7 @@ bool Settings::load()
  * @param str The string to trim.
  * @return The trimmed string.
  */
-std::string Settings::trim(const std::string &str)
+std::string trim(const std::string &str)
 {
 	size_t first = str.find_first_not_of(' ');
 	if (first == std::string::npos)
@@ -216,7 +323,7 @@ std::string Settings::trim(const std::string &str)
  * @param vk The virtual key code to convert.
  * @return The string representation of the key, or hexadecimal value in a string.
  */
-std::string Settings::virtualKeyCodeToString(WORD vk)
+std::string virtualKeyCodeToString(WORD vk)
 {
 	for (const auto &pair : keyMap)
 	{
@@ -250,7 +357,7 @@ std::string Settings::virtualKeyCodeToString(WORD vk)
  * @param str The string key name to convert.
  * @return The virtual key code.
  */
-WORD Settings::stringToVirtualKeyCode(const std::string &str)
+WORD stringToVirtualKeyCode(const std::string &str)
 {
 	// Create uppercase version of input string
 	std::string upper = str;
@@ -298,7 +405,7 @@ WORD Settings::stringToVirtualKeyCode(const std::string &str)
  * @param keyString The string of keys to convert.
  * @return A vector of INPUT structs.
  */
-std::vector<INPUT> Settings::convertStringToInput(const std::string &keyString)
+std::vector<INPUT> convertStringToInput(const std::string &keyString)
 {
 	std::vector<INPUT> inputs;
 	std::istringstream stream(keyString);
@@ -330,14 +437,4 @@ std::vector<INPUT> Settings::convertStringToInput(const std::string &keyString)
 	}
 
 	return inputs;
-}
-
-const std::unordered_map<std::string, std::string> &Settings::getDevices() const
-{
-	return devices;
-}
-
-const std::unordered_map<std::string, std::unordered_map<std::string, std::string>> &Settings::getMappings() const
-{
-	return mappings;
 }

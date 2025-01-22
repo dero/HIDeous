@@ -11,8 +11,8 @@
 #include <commctrl.h>
 #include <shellapi.h>
 #include "resource.h"
-#include "settings.h"
-#include "../common/shared.h"
+#include "../common/settings.h"
+#include "intercept.h"
 #include "../common/crypto.h"
 #include "../common/logging.h"
 #include "../dll/hideous_hook.h"
@@ -21,18 +21,8 @@
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "Comctl32.lib")
 
-struct LastKeypress
-{
-	DWORD timestamp; // GetTickCount() value
-	std::string deviceHash;
-	USHORT vkCode;
-	bool valid; // Indicates if we have any keypress recorded
-};
-
-static LastKeypress g_lastKeypress = {0, "", 0, false};
-
 // Tray icon
-static NOTIFYICONDATA g_trayIcon = {0};
+NOTIFYICONDATA g_trayIcon = {0};
 
 void CreateTrayIcon(HWND hwnd)
 {
@@ -127,10 +117,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 							g_lastKeypress.timestamp = GetTickCount();
 							g_lastKeypress.deviceHash = deviceHash;
 							g_lastKeypress.vkCode = raw->data.keyboard.VKey;
-							g_lastKeypress.valid = true;
 
 							// Key pressed - show VK code
-							std::string keyName = Settings::virtualKeyCodeToString(raw->data.keyboard.VKey);
+							std::string keyName = virtualKeyCodeToString(raw->data.keyboard.VKey);
 							WCHAR keyText[32];
 							swprintf_s(keyText, L"0x%02X (%hs)", raw->data.keyboard.VKey, keyName.c_str());
 
@@ -154,6 +143,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		ss << " WM_HIDEOUS_KEYBOARD_EVENT - Key: 0x" << std::hex << wParam
 		   << " lParam: 0x" << lParam << std::dec;
 		DebugLog(ss.str());
+
+		// `wParam` is the virtual key code
+		return DecideOnKey(wParam);
 
 		break;
 	}
@@ -294,7 +286,7 @@ HWND CreateDeviceTable(HWND parent)
 	return hList;
 }
 
-std::vector<KeyboardDevice> GetKeyboardDevices(const Settings &settings)
+std::vector<KeyboardDevice> GetKeyboardDevices()
 {
 	std::vector<KeyboardDevice> devices;
 	UINT nDevices;
@@ -315,7 +307,7 @@ std::vector<KeyboardDevice> GetKeyboardDevices(const Settings &settings)
 	}
 
 	// Get device mappings to find user labels
-	const auto &deviceMappings = settings.getDevices();
+	const auto &deviceMappings = getSettings().devices;
 
 	for (UINT i = 0; i < nDevices; i++)
 	{
@@ -353,11 +345,11 @@ std::vector<KeyboardDevice> GetKeyboardDevices(const Settings &settings)
 	return devices;
 }
 
-void UpdateDeviceTable(HWND hList, const Settings &settings)
+void UpdateDeviceTable(HWND hList)
 {
 	ListView_DeleteAllItems(hList);
 
-	auto devices = GetKeyboardDevices(settings);
+	auto devices = GetKeyboardDevices();
 
 	for (const auto &dev : devices)
 	{

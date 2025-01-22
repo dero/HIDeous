@@ -3,4 +3,3 @@ EXPORTS
     KeyboardProc
     InstallHook
     UninstallHook
-    GetHookThreadId

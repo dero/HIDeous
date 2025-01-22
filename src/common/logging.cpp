@@ -1,6 +1,7 @@
-#include "shared.h"
+#include "settings.h"
 #include "logging.h"
 #include <windows.h>
+#include <shlwapi.h>
 #include <fstream>
 #include <sstream>
 
@@ -24,7 +25,7 @@ std::string WideToNarrow(const wchar_t *wide)
  */
 void DebugLog(const std::string &message)
 {
-	if (!g_shared || !g_shared->isDebugMode || !g_shared->logPath)
+	if (!getSettings().global.Debug || getSettings().global.DebugFile.empty())
 	{
 		return;
 	}
@@ -43,7 +44,9 @@ void DebugLog(const std::string &message)
 	// Open log file for appending, write message, and close.
 	std::ofstream outputLog;
 
-	outputLog.open(g_shared->logPath, std::ios_base::app);
+	outputLog.open(
+		getAppPath() + L"\\" + getSettings().global.DebugFile,
+		std::ios_base::app);
 	outputLog << ss.str();
 	outputLog.flush();
 	outputLog.close();
