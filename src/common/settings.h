@@ -20,7 +20,8 @@ struct GlobalSettings
 struct Settings
 {
     GlobalSettings global;
-    std::unordered_map<std::string, std::string> devices;
+    std::unordered_map<std::string, std::string> deviceToHash;
+    std::unordered_map<std::string, std::string> hashToDevice;
     std::unordered_map<std::string, std::unordered_map<std::string, std::string>> mappings;
 };
 

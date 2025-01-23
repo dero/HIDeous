@@ -21,9 +21,9 @@ int DecideOnKey(USHORT vkCode)
         return KEY_DECISION_LET_THROUGH; // Different key
     }
 
-    const auto &deviceMappings = getSettings().devices;
-    const auto deviceIt = deviceMappings.find(g_lastKeypress.deviceHash);
-    if (deviceIt == deviceMappings.end())
+    const auto &hashToDevice = getSettings().hashToDevice;
+    const auto deviceIt = hashToDevice.find(g_lastKeypress.deviceHash);
+    if (deviceIt == hashToDevice.end())
     {
         return KEY_DECISION_LET_THROUGH; // No mappings for this device
     }

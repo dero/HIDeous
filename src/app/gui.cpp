@@ -306,9 +306,6 @@ std::vector<KeyboardDevice> GetKeyboardDevices()
 		return devices;
 	}
 
-	// Get device mappings to find user labels
-	const auto &deviceMappings = getSettings().devices;
-
 	for (UINT i = 0; i < nDevices; i++)
 	{
 		if (pRawInputDeviceList[i].dwType == RIM_TYPEKEYBOARD)
@@ -324,16 +321,12 @@ std::vector<KeyboardDevice> GetKeyboardDevices()
 					dev.fullName = deviceName;
 					dev.hash = GetShortHash(deviceName);
 
+					const auto &hashToDevice = getSettings().hashToDevice;
+
 					// Find user label if it exists
-					dev.userLabel = "Unknown";
-					for (const auto &mapping : deviceMappings)
-					{
-						if (mapping.second == dev.hash)
-						{
-							dev.userLabel = mapping.first;
-							break;
-						}
-					}
+					dev.userLabel = hashToDevice.find(dev.hash) != hashToDevice.end()
+										? hashToDevice.at(dev.hash)
+										: "Unknown";
 
 					devices.push_back(dev);
 				}

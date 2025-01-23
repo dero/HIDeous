@@ -253,7 +253,8 @@ Settings loadSettings()
 
 			if (currentSection == "Devices")
 			{
-				settings.devices[key] = value;
+				settings.deviceToHash[key] = value;
+				settings.hashToDevice[value] = key;
 			}
 			else if (currentSection == "Global")
 			{
