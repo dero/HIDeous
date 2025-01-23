@@ -2,4 +2,4 @@
 
 #include <string>
 
-std::string GetShortHash(const std::wstring &longString);
+std::wstring GetShortHash(const std::wstring &longString);

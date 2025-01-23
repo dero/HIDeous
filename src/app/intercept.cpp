@@ -37,7 +37,7 @@ int DecideOnKey(USHORT vkCode)
     }
 
     // Convert vkCode to string
-    std::string keyName = virtualKeyCodeToString(g_lastKeypress.vkCode);
+    std::wstring keyName = virtualKeyCodeToString(g_lastKeypress.vkCode);
 
     // Check if key has a macro mapping
     const auto &macros = mappingsIt->second;
@@ -46,8 +46,8 @@ int DecideOnKey(USHORT vkCode)
     if (macroIt == macros.end())
     {
         // Check for hex format as a fallback
-        std::ostringstream ss;
-        ss << "0x" << std::hex << g_lastKeypress.vkCode;
+        std::wostringstream ss;
+        ss << L"0x" << std::hex << g_lastKeypress.vkCode;
 
         const auto macroKeyIt = macros.find(ss.str());
         if (macroKeyIt == macros.end())
@@ -58,27 +58,41 @@ int DecideOnKey(USHORT vkCode)
     size_t colonPos = macroIt->second.find(':');
     if (colonPos == std::string::npos)
     {
-        DebugLog("Invalid macro format: " + macroIt->second);
+        DebugLog(L"Invalid macro format: " + macroIt->second);
         return KEY_DECISION_LET_THROUGH; // Invalid macro format
     }
 
-    std::string command = macroIt->second.substr(0, colonPos);
-    std::string data = macroIt->second.substr(colonPos + 1);
+    std::wstring command = macroIt->second.substr(0, colonPos);
+    std::wstring data = macroIt->second.substr(colonPos + 1);
 
-    if (command == "keys")
+    if (command == L"keys")
     {
         // Convert key sequence to INPUT events
         std::vector<INPUT> inputs = convertStringToInput(data);
+
+        // Keydowns
+        std::vector<INPUT> firstHalfOfInputs(inputs.begin(), inputs.begin() + inputs.size() / 2);
+
+        // Keyups
+        std::vector<INPUT> secondHalfOfInputs(inputs.begin() + inputs.size() / 2, inputs.end());
+
+        DebugLog(L"Sending keys: " + data);
+
         if (!inputs.empty())
         {
-            SendInput(inputs.size(), inputs.data(), sizeof(INPUT));
+            SendInput(firstHalfOfInputs.size(), firstHalfOfInputs.data(), sizeof(INPUT));
+            SendInput(secondHalfOfInputs.size(), secondHalfOfInputs.data(), sizeof(INPUT));
+
             return KEY_DECISION_BLOCK; // Macro handled
         }
     }
-    else if (command == "text")
+    else if (command == L"text")
     {
         // Convert text to Unicode and send
         std::wstring wtext(data.begin(), data.end());
+
+        DebugLog(L"Sending text: " + wtext);
+
         for (wchar_t c : wtext)
         {
             INPUT input = {0};
@@ -86,6 +100,7 @@ int DecideOnKey(USHORT vkCode)
             input.ki.wVk = 0;
             input.ki.wScan = c;
             input.ki.dwFlags = KEYEVENTF_UNICODE;
+            input.ki.dwExtraInfo = HIDEOUS_IDENTIFIER;
             SendInput(1, &input, sizeof(INPUT));
 
             input.ki.dwFlags |= KEYEVENTF_KEYUP;
@@ -95,7 +110,7 @@ int DecideOnKey(USHORT vkCode)
     }
     else
     {
-        DebugLog("Unknown macro command: " + command);
+        DebugLog(L"Unknown macro command: " + command);
     }
 
     return KEY_DECISION_LET_THROUGH; // No valid command

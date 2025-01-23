@@ -15,15 +15,15 @@
 struct LastKeypress
 {
 	DWORD timestamp; // GetTickCount() value
-	std::string deviceHash;
+	std::wstring deviceHash;
 	USHORT vkCode;
 };
 
 struct KeyboardDevice
 {
 	std::wstring fullName;
-	std::string hash;
-	std::string userLabel; // From settings.ini
+	std::wstring hash;
+	std::wstring userLabel;
 };
 
 extern LastKeypress g_lastKeypress;

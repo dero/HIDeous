@@ -23,7 +23,7 @@ std::string WideToNarrow(const wchar_t *wide)
  * @param message The message to log.
  * @return void
  */
-void DebugLog(const std::string &message)
+void DebugLog(const std::wstring &message)
 {
 	if (!getSettings().global.Debug || getSettings().global.DebugFile.empty())
 	{
@@ -32,7 +32,7 @@ void DebugLog(const std::string &message)
 
 	DWORD processId = GetCurrentProcessId();
 	DWORD threadId = GetCurrentThreadId();
-	std::ostringstream ss;
+	std::wostringstream ss;
 
 	// Precise time
 	SYSTEMTIME st;
@@ -42,7 +42,7 @@ void DebugLog(const std::string &message)
 	ss << "[PID: " << processId << " TID: " << threadId << "] " << message << "\n";
 
 	// Open log file for appending, write message, and close.
-	std::ofstream outputLog;
+	std::wofstream outputLog;
 
 	outputLog.open(
 		getAppPath() + L"\\" + getSettings().global.DebugFile,

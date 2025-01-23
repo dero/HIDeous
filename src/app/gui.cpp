@@ -95,8 +95,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				if (raw->header.dwType == RIM_TYPEKEYBOARD)
 				{
 					// Debug logging
-					std::ostringstream ss;
-					ss << "WM_INPUT - Device: 0x" << std::hex << (UINT64)raw->header.hDevice
+					std::wostringstream ss;
+					ss << "📨 WM_INPUT - Device: 0x" << std::hex << (UINT64)raw->header.hDevice
 					   << " Key: 0x" << raw->data.keyboard.VKey
 					   << " Flags: 0x" << raw->data.keyboard.Flags << std::dec;
 					DebugLog(ss.str());
@@ -108,8 +108,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					if (itemIndex >= 0)
 					{
 						// Get device hash
-						std::wstring deviceHashW = GetListViewCellText(hList, itemIndex, 1);
-						std::string deviceHash = WideToNarrow(deviceHashW.c_str());
+						std::wstring deviceHash = GetListViewCellText(hList, itemIndex, 1);
 
 						if (!(raw->data.keyboard.Flags & RI_KEY_BREAK))
 						{
@@ -119,9 +118,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 							g_lastKeypress.vkCode = raw->data.keyboard.VKey;
 
 							// Key pressed - show VK code
-							std::string keyName = virtualKeyCodeToString(raw->data.keyboard.VKey);
-							WCHAR keyText[32];
-							swprintf_s(keyText, L"0x%02X (%hs)", raw->data.keyboard.VKey, keyName.c_str());
+							std::wstring keyName = virtualKeyCodeToString(raw->data.keyboard.VKey);
+
+							// L"0x%02X (%hs)"
+							WCHAR keyText[256];
+							swprintf_s(keyText, L"0x%02X (%s)", raw->data.keyboard.VKey, keyName.c_str());
 
 							ListView_SetItemText(hList, itemIndex, 3, keyText);
 						}
@@ -139,8 +140,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_HIDEOUS_KEYBOARD_EVENT:
 	{
-		std::ostringstream ss;
-		ss << " WM_HIDEOUS_KEYBOARD_EVENT - Key: 0x" << std::hex << wParam
+		std::wostringstream ss;
+		ss << "📨 WM_HIDEOUS_KEYBOARD_EVENT - Key: 0x" << std::hex << wParam
 		   << " lParam: 0x" << lParam << std::dec;
 		DebugLog(ss.str());
 
@@ -321,12 +322,10 @@ std::vector<KeyboardDevice> GetKeyboardDevices()
 					dev.fullName = deviceName;
 					dev.hash = GetShortHash(deviceName);
 
-					const auto &hashToDevice = getSettings().hashToDevice;
-
 					// Find user label if it exists
-					dev.userLabel = hashToDevice.find(dev.hash) != hashToDevice.end()
-										? hashToDevice.at(dev.hash)
-										: "Unknown";
+					dev.userLabel = getSettings().hashToDevice.find(dev.hash) != getSettings().hashToDevice.end()
+										? getSettings().hashToDevice.at(dev.hash)
+										: L"Unknown";
 
 					devices.push_back(dev);
 				}

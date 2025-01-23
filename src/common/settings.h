@@ -20,16 +20,16 @@ struct GlobalSettings
 struct Settings
 {
     GlobalSettings global;
-    std::unordered_map<std::string, std::string> deviceToHash;
-    std::unordered_map<std::string, std::string> hashToDevice;
-    std::unordered_map<std::string, std::unordered_map<std::string, std::string>> mappings;
+    std::unordered_map<std::wstring, std::wstring> deviceToHash;
+    std::unordered_map<std::wstring, std::wstring> hashToDevice;
+    std::unordered_map<std::wstring, std::unordered_map<std::wstring, std::wstring>> mappings;
 };
 
-std::string trim(const std::string &str);
-std::vector<INPUT> convertStringToInput(const std::string &keyString);
-WORD stringToVirtualKeyCode(const std::string &str);
-std::string virtualKeyCodeToString(WORD vk);
+std::wstring trim(const std::wstring &str);
+std::vector<INPUT> convertStringToInput(const std::wstring &keyString);
+WORD stringToVirtualKeyCode(const std::wstring &str);
+std::wstring virtualKeyCodeToString(WORD vk);
 bool persistSettingsPath(const std::wstring &path);
 std::wstring getAppPath();
 Settings loadSettings();
-Settings getSettings();
+const Settings &getSettings();

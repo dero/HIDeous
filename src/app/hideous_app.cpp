@@ -31,7 +31,7 @@ typedef BOOL (*UninstallHookFn)();
  * - deviceHash: Hash of the device name
  * - vkCode: Virtual key code of the key pressed
  */
-LastKeypress g_lastKeypress = {0, "", 0};
+LastKeypress g_lastKeypress = {0, L"", 0};
 HMODULE g_hookDll = nullptr;
 InstallHookFn g_installHook = nullptr;
 UninstallHookFn g_uninstallHook = nullptr;
@@ -117,7 +117,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return 1;
     }
 
-    DebugLog("HIDeous started");
+    DebugLog(L"HIDeous started");
 
     // Set window icons
     SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
@@ -138,14 +138,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
     {
-        DebugLog("Failed to register for raw input");
+        DebugLog(L"Failed to register for raw input");
         return 1;
     }
 
     // Load the hook DLL
     if (!InstallGlobalHook())
     {
-        DebugLog("Failed to install global keyboard hook");
+        DebugLog(L"Failed to install global keyboard hook");
         return 1;
     }
 

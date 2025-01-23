@@ -6,7 +6,7 @@
 /**
  * Get a short hash of a longer string, such as a device name.
  */
-std::string GetShortHash(const std::wstring &longString)
+std::wstring GetShortHash(const std::wstring &longString)
 {
 	HCRYPTPROV hProv = 0;
 	HCRYPTHASH hHash = 0;
@@ -35,5 +35,5 @@ std::string GetShortHash(const std::wstring &longString)
 		CryptReleaseContext(hProv, 0);
 	}
 
-	return hashStr;
+	return std::wstring(hashStr.begin(), hashStr.end());
 }
