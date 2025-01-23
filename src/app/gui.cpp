@@ -29,6 +29,8 @@ void CreateTrayIcon(HWND hwnd)
 	g_trayIcon.cbSize = sizeof(NOTIFYICONDATA);
 	g_trayIcon.hWnd = hwnd;
 	g_trayIcon.uID = 1;
+	Shell_NotifyIcon(NIM_DELETE, &g_trayIcon);
+
 	g_trayIcon.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
 	g_trayIcon.uCallbackMessage = WM_TRAYICON;
 	g_trayIcon.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_APPICON));
@@ -94,13 +96,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				RAWINPUT *raw = (RAWINPUT *)rawData.data();
 				if (raw->header.dwType == RIM_TYPEKEYBOARD)
 				{
-					// Debug logging
-					std::wostringstream ss;
-					ss << "📨 WM_INPUT - Device: 0x" << std::hex << (UINT64)raw->header.hDevice
-					   << " Key: 0x" << raw->data.keyboard.VKey
-					   << " Flags: 0x" << raw->data.keyboard.Flags << std::dec;
-					DebugLog(ss.str());
-
 					// Find the device in the list
 					HWND hList = GetDlgItem(hwnd, 0);
 					int itemIndex = FindDeviceListItem(hList, raw->header.hDevice);
@@ -112,6 +107,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 						if (!(raw->data.keyboard.Flags & RI_KEY_BREAK))
 						{
+							// Log the key press, only on key down
+							std::wostringstream ss;
+							ss << "1️⃣ WM_INPUT - Device: 0x" << std::hex << (UINT64)raw->header.hDevice
+							   << " Key: 0x" << raw->data.keyboard.VKey
+							   << " Flags: 0x" << raw->data.keyboard.Flags << std::dec;
+							DebugLog(ss.str());
+
 							// Update last keypress info
 							g_lastKeypress.timestamp = GetTickCount();
 							g_lastKeypress.deviceHash = deviceHash;
@@ -141,7 +143,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_HIDEOUS_KEYBOARD_EVENT:
 	{
 		std::wostringstream ss;
-		ss << "📨 WM_HIDEOUS_KEYBOARD_EVENT - Key: 0x" << std::hex << wParam
+		ss << "3️⃣ WM_HIDEOUS_KEYBOARD_EVENT - Key: 0x" << std::hex << wParam
 		   << " lParam: 0x" << lParam << std::dec;
 		DebugLog(ss.str());
 
@@ -183,6 +185,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			return 0;
 		}
 		break;
+
+	case WM_QUERYENDSESSION:
+		RemoveTrayIcon();
+		return TRUE;
+
+	case WM_ENDSESSION:
+		if (wParam == TRUE)
+		{
+			RemoveTrayIcon();
+		}
+		return 0;
 
 	case WM_TRAYICON:
 		if (LOWORD(lParam) == WM_RBUTTONUP)

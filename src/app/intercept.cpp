@@ -5,6 +5,7 @@
 #include "../common/logging.h"
 #include <sstream>
 #include <windows.h>
+#include <future>
 
 int DecideOnKey(USHORT vkCode)
 {
@@ -67,45 +68,49 @@ int DecideOnKey(USHORT vkCode)
 
     if (command == L"keys")
     {
-        // Convert key sequence to INPUT events
-        std::vector<INPUT> inputs = convertStringToInput(data);
+        auto future = std::async(std::launch::async, [&data]()
+                                 {
+            // Convert key sequence to INPUT events
+            std::vector<INPUT> inputs = convertStringToInput(data);
 
-        // Keydowns
-        std::vector<INPUT> firstHalfOfInputs(inputs.begin(), inputs.begin() + inputs.size() / 2);
+            // Keydowns
+            std::vector<INPUT> firstHalfOfInputs(inputs.begin(), inputs.begin() + inputs.size() / 2);
 
-        // Keyups
-        std::vector<INPUT> secondHalfOfInputs(inputs.begin() + inputs.size() / 2, inputs.end());
+            // Keyups
+            std::vector<INPUT> secondHalfOfInputs(inputs.begin() + inputs.size() / 2, inputs.end());
 
-        DebugLog(L"Sending keys: " + data);
+            DebugLog(L"Sending keys: " + data);
 
-        if (!inputs.empty())
-        {
-            SendInput(firstHalfOfInputs.size(), firstHalfOfInputs.data(), sizeof(INPUT));
-            SendInput(secondHalfOfInputs.size(), secondHalfOfInputs.data(), sizeof(INPUT));
+            if (!inputs.empty())
+            {
+                SendInput(firstHalfOfInputs.size(), firstHalfOfInputs.data(), sizeof(INPUT));
+                Sleep(10); // Delay between keydown and keyup to prevent sticky keys
+                SendInput(secondHalfOfInputs.size(), secondHalfOfInputs.data(), sizeof(INPUT));
+            } });
 
-            return KEY_DECISION_BLOCK; // Macro handled
-        }
+        return KEY_DECISION_BLOCK; // Macro handled
     }
     else if (command == L"text")
     {
-        // Convert text to Unicode and send
-        std::wstring wtext(data.begin(), data.end());
+        auto future = std::async(std::launch::async, [&data]()
+                                 {
+                DebugLog(L"Sending text: " + data);
 
-        DebugLog(L"Sending text: " + wtext);
+                for (wchar_t c : data)
+                {
+                    INPUT input = {0};
+                    input.type = INPUT_KEYBOARD;
+                    input.ki.wVk = 0;
+                    input.ki.wScan = c;
+                    input.ki.dwFlags = KEYEVENTF_UNICODE;
+                    input.ki.dwExtraInfo = HIDEOUS_IDENTIFIER;
+                    SendInput(1, &input, sizeof(INPUT));
 
-        for (wchar_t c : wtext)
-        {
-            INPUT input = {0};
-            input.type = INPUT_KEYBOARD;
-            input.ki.wVk = 0;
-            input.ki.wScan = c;
-            input.ki.dwFlags = KEYEVENTF_UNICODE;
-            input.ki.dwExtraInfo = HIDEOUS_IDENTIFIER;
-            SendInput(1, &input, sizeof(INPUT));
+                    Sleep(1); // Simulate ultra-fast typing
 
-            input.ki.dwFlags |= KEYEVENTF_KEYUP;
-            SendInput(1, &input, sizeof(INPUT));
-        }
+                    input.ki.dwFlags |= KEYEVENTF_KEYUP;
+                    SendInput(1, &input, sizeof(INPUT));
+                } });
         return KEY_DECISION_BLOCK; // Macro handled
     }
     else

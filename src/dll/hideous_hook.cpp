@@ -34,32 +34,23 @@ extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
         return CallNextHookEx(g_keyboardHook, code, wParam, lParam);
     }
 
-    if (getSettings().global.Debug)
-    {
-        // Log every hook call
-        std::wostringstream ss;
-        ss << "WH_KEYBOARD - code: " << code
-           << ", wparam: 0x" << std::hex << static_cast<DWORD>(wParam) << std::dec
-           << ", lparam: " << static_cast<DWORD>(lParam);
-
-        DebugLog(ss.str());
-    }
-
     // Only process keydown events
     if (!(lParam & 0x80000000))
     {
+        if (getSettings().global.Debug)
+        {
+            // Log every hook call
+            std::wostringstream ss;
+            ss << "2️⃣ WH_KEYBOARD - code: " << code
+               << ", wparam: 0x" << std::hex << static_cast<DWORD>(wParam) << std::dec
+               << ", lparam: " << static_cast<DWORD>(lParam);
+
+            DebugLog(ss.str());
+        }
+
         // Log target window info
         DWORD targetProcessId = 0;
         GetWindowThreadProcessId(g_mainWindow, &targetProcessId);
-
-        if (getSettings().global.Debug)
-        {
-            std::wostringstream windowss;
-            windowss << "Attempting SendMessageTimeout to window 0x"
-                     << std::hex << (DWORD)(UINT_PTR)g_mainWindow
-                     << " in process " << std::dec << targetProcessId;
-            DebugLog(windowss.str());
-        }
 
         // Try to verify if window still exists
         if (!IsWindow(g_mainWindow))
