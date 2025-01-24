@@ -114,7 +114,7 @@ int DecideOnKey(USHORT vkCode)
                 } });
         return KEY_DECISION_BLOCK; // Macro handled
     }
-    else if (command == L"system")
+    else if (command == L"run")
     {
         auto future = std::async(std::launch::async, [&data]()
                                  {
