@@ -6,6 +6,7 @@
 #include <sstream>
 #include <windows.h>
 #include <future>
+#include <cstdlib>
 
 int DecideOnKey(USHORT vkCode)
 {
@@ -111,6 +112,39 @@ int DecideOnKey(USHORT vkCode)
                     input.ki.dwFlags |= KEYEVENTF_KEYUP;
                     SendInput(1, &input, sizeof(INPUT));
                 } });
+        return KEY_DECISION_BLOCK; // Macro handled
+    }
+    else if (command == L"system")
+    {
+        auto future = std::async(std::launch::async, [&data]()
+                                 {
+                                    char* command = new char[data.size() + 1];
+                                    WideCharToMultiByte(
+                                        // The default code page
+                                        CP_ACP,
+                                        // Flags indicating invalid characters
+                                        0,
+                                        // The wide-character string
+                                        data.c_str(),
+                                        // The number of wide-character characters in the string, -1 if null-terminated
+                                        -1,
+                                        // The buffer to receive the converted string
+                                        command,
+                                        // The size of the buffer
+                                        data.size() + 1,
+                                        // A pointer to a default character
+                                        NULL,
+                                        // A pointer to a flag that indicates if a default character was used
+                                        NULL);
+
+                                    if (command == NULL)
+                                    {
+                                        DebugLog(L"Failed to convert command to ASCII");
+                                        return;
+                                    } else {
+                                        DebugLog(L"Sending system command: " + data);
+                                        system(command);
+                                    } });
         return KEY_DECISION_BLOCK; // Macro handled
     }
     else
