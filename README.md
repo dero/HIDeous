@@ -34,7 +34,7 @@ Free Windows app that allows the keyboard lying in your drawer to be useful agai
 ## Usage
 
 0. Plug in a second (third, fourth, etc.) keyboard.
-1. Download the latest release from [Releases] and extract it.
+1. Download the latest release from [Releases](https://github.com/dero/HIDeous/releases) and extract it.
 2. Run `HIDeous.exe`.
 3. Press a key, a key code will appear in one of the rows.
 4. Note down the "Device Hash" of that keyboard.
