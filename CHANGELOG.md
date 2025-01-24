@@ -1,5 +1,9 @@
 # HIDeous Changelog
 
+## v0.11.0 (2025-01-24)
+
+- 🏃‍♀️ Added the "run:" command allowing you to run anything on a keypress.
+
 ## v0.10.1 (2025-01-24)
 
 - 🐛 Fixed a bug where the app would address UI components wrong.
@@ -13,5 +17,3 @@
 - 🚀 Initial release!
 - ⌨ A single key can be mapped to a combo or text.
 - 🎨 UI shows a list of keyboards.
-
-

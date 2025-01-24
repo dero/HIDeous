@@ -18,6 +18,7 @@ Free Windows app that allows the keyboard lying in your drawer to be useful agai
 
 * **Key -> Combo**: Press a single key to send a combo like `Ctrl+C`.
 * **Key -> Text**: Press a single key to send a text like `¯\_(ツ)_/¯`.
+* **Key -> Run**: Press a single key to run a command like `explorer.exe C:\Some\Path`.
 * **Any USB keyboard**: No matter how old or cheap.
 * **Unicode support**: Emoji, math symbols, katakana? No problem.
 * **No drivers required**: Just run the `.exe`.
@@ -71,6 +72,7 @@ NumPad=1A5553
 ;
 ; `text:` prefix will send a text.
 ; `keys:` prefix will send a key combination.
+; `run:` prefix will run a command.
 ;
 ; ⚠ Never include a comment in the same line as a key binding. ⚠
 [Main_Keyboard]
@@ -89,6 +91,7 @@ Numpad8=keys:CTRL+SHIFT+F10
 Numpad9=keys:CTRL+SHIFT+F11
 ADD=keys:CTRL+SHIFT+F12
 MULTIPLY=text:×
+Numpad4=run:explorer.exe C:\data\ShareX\Screenshots
 
 ; That's it! Save the file and restart the app.
 ```
