@@ -39,6 +39,49 @@ void CreateTrayIcon(HWND hwnd)
 	Shell_NotifyIcon(NIM_ADD, &g_trayIcon);
 }
 
+void CreateStartupCheckbox(HWND hwnd)
+{
+	// Read the registry key to see if the app is set to run on startup
+	HKEY hKey;
+	bool runsOnStartup = false;
+
+	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+					 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+	{
+		WCHAR path[MAX_PATH];
+		DWORD size = MAX_PATH;
+		if (RegQueryValueEx(hKey, L"HIDeous", NULL, NULL, (LPBYTE)path, &size) == ERROR_SUCCESS)
+		{
+			runsOnStartup = true;
+		}
+		RegCloseKey(hKey);
+	}
+
+	RECT clientRect;
+	GetClientRect(hwnd, &clientRect);
+
+	int padding = 10;
+	int checkboxHeight = 30;
+	int checkboxWidth = 150;
+
+	int checkboxX = padding;
+	int checkboxY = clientRect.bottom - checkboxHeight;
+
+	CreateWindowEx(0,
+				   L"STATIC", nullptr,
+				   WS_VISIBLE | WS_CHILD | SS_SUNKEN,
+				   0, checkboxY - 1,
+				   clientRect.right - clientRect.left, checkboxHeight + 1,
+				   hwnd, nullptr, GetModuleHandle(NULL), NULL);
+
+	CreateWindowEx(0, L"BUTTON", L"Run on startup",
+				   WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX,
+				   checkboxX, checkboxY, checkboxWidth, checkboxHeight,
+				   hwnd, (HMENU)IDC_RUN_ON_STARTUP, GetModuleHandle(NULL), NULL);
+
+	SendMessage(GetDlgItem(hwnd, IDC_RUN_ON_STARTUP), BM_SETCHECK, runsOnStartup, 0);
+}
+
 void RemoveTrayIcon()
 {
 	Shell_NotifyIcon(NIM_DELETE, &g_trayIcon);
@@ -72,6 +115,36 @@ int FindDeviceListItem(HWND hList, HANDLE hDevice)
 		}
 	}
 	return -1;
+}
+
+void StartupCallback(BOOL isChecked)
+{
+	HKEY hKey;
+
+	if (isChecked)
+	{
+		// Add the registry key to run on startup
+		if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+						 0, KEY_WRITE, &hKey) == ERROR_SUCCESS)
+		{
+			WCHAR path[MAX_PATH];
+			GetModuleFileName(NULL, path, MAX_PATH);
+			RegSetValueEx(hKey, L"HIDeous", 0, REG_SZ, (BYTE *)path, (DWORD)(wcslen(path) + 1) * sizeof(WCHAR));
+			RegCloseKey(hKey);
+
+			DebugLog(L"🚀 Run on startup enabled");
+		}
+	}
+	else
+	{
+		// Remove the registry key
+		RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+					 0, KEY_WRITE, &hKey);
+		RegDeleteValue(hKey, L"HIDeous");
+		RegCloseKey(hKey);
+
+		DebugLog(L"🚀 Run on startup disabled");
+	}
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -171,6 +244,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_CREATE:
 		CreateTrayIcon(hwnd);
+		CreateStartupCheckbox(hwnd);
+
 		return 0;
 
 	case WM_CLOSE:
@@ -254,6 +329,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					}
 					CloseClipboard();
 				}
+			}
+			break;
+		}
+
+		case IDC_RUN_ON_STARTUP:
+		{
+			if (HIWORD(wParam) == BN_CLICKED)
+			{
+				BOOL isChecked = SendMessage((HWND)lParam, BM_GETCHECK, 0, 0);
+				StartupCallback(isChecked);
 			}
 			break;
 		}

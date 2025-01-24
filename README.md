@@ -58,6 +58,9 @@ Debug=0
 ; If the app keeps missing keys, try increasing this.
 KeyWaitTime=30
 
+; Whether to run the app automatically when the current user logs in.
+RunOnStartup=1
+
 ; ✅ Edit this section to name your keyboards.
 ; Left side = Any name you want to give your keyboard.
 ; Right side = Its Device Hash, find it in the UI.
@@ -115,6 +118,10 @@ And it's newer, lighter and simpler than all of them. ⚖
 Try running the app as an administrator.
 
 If that doesn't help, it'd be great if you took the time to [create an issue on GitHub](https://github.com/dero/HIDeous/issues). I'll do my best to help you out and you'll be helping make the app better for everyone.
+
+## Uninstall
+
+Make sure the "Run on startup" toggle in the UI is off, then just delete the app directory.
 
 ## Disclaimer
 
