@@ -126,6 +126,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Create device table
     HWND hList = CreateDeviceTable(hwnd);
 
+    // Create the checkbox for running on startup
+    CreateStartupCheckbox(hwnd);
+
     // Populate table
     UpdateDeviceTable(hList);
 

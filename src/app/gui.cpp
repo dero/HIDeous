@@ -170,7 +170,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				if (raw->header.dwType == RIM_TYPEKEYBOARD)
 				{
 					// Find the device in the list
-					HWND hList = GetDlgItem(hwnd, 0);
+					HWND hList = GetDlgItem(hwnd, IDC_MAIN_LIST);
 					int itemIndex = FindDeviceListItem(hList, raw->header.hDevice);
 
 					if (itemIndex >= 0)
@@ -228,7 +228,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_CONTEXTMENU:
 	{
-		HWND hList = GetDlgItem(hwnd, 0);
+		HWND hList = GetDlgItem(hwnd, IDC_MAIN_LIST);
 		if ((HWND)wParam == hList)
 		{
 			POINT pt = {LOWORD(lParam), HIWORD(lParam)};
@@ -244,7 +244,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_CREATE:
 		CreateTrayIcon(hwnd);
-		CreateStartupCheckbox(hwnd);
 
 		return 0;
 
@@ -293,7 +292,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_COMMAND:
 	{
-		HWND hList = GetDlgItem(hwnd, 0);
+		HWND hList = GetDlgItem(hwnd, IDC_MAIN_LIST);
 		switch (LOWORD(wParam))
 		{
 		case IDM_RESTORE:
@@ -353,7 +352,8 @@ HWND CreateDeviceTable(HWND parent)
 {
 	HWND hList = CreateWindowEx(0, WC_LISTVIEW, NULL,
 								WS_CHILD | WS_VISIBLE | LVS_REPORT | LBS_HASSTRINGS | LVS_SHOWSELALWAYS,
-								10, 10, 700, 300, parent, NULL, GetModuleHandle(NULL), NULL);
+								10, 10, 700, 300, parent,
+								(HMENU)IDC_MAIN_LIST, GetModuleHandle(NULL), NULL);
 
 	// Add styles for better selection and copying
 	ListView_SetExtendedListViewStyle(hList,

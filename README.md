@@ -136,4 +136,3 @@ Also, I'm actually a web engineer, not a C++ developer by trade, so the code mig
 Do whatever you want with this. [MIT License](./LICENSE).
 
 Attribution and nice words are appreciated, but not required. 🙂
-
