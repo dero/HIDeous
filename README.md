@@ -58,8 +58,6 @@ Debug=0
 ; If the app keeps missing keys, try increasing this.
 KeyWaitTime=30
 
-; Whether to run the app automatically when the current user logs in.
-RunOnStartup=1
 
 ; ✅ Edit this section to name your keyboards.
 ; Left side = Any name you want to give your keyboard.
