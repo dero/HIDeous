@@ -1,5 +1,9 @@
 # HIDeous Changelog
 
+## v0.12.0 (2025-01-28)
+
+- 📝 Edit "settings.ini" using a button in the GUI or by right clicking a tray icon.
+
 ## v0.11.0 (2025-01-24)
 
 - 🏃‍♀️ Added the "run:" command allowing you to run anything on a keypress.
