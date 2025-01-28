@@ -12,6 +12,9 @@
 #define IDM_EXIT 1003
 #define IDC_RUN_ON_STARTUP 1004
 #define IDC_MAIN_LIST 1005
+#define IDM_SETTINGS 1006
+#define IDC_EDIT_SETTIGNS 1007
+
 #define WM_TRAYICON (WM_USER + 1)
 
 struct LastKeypress
@@ -38,5 +41,6 @@ std::wstring GetListViewCellText(HWND hList, int row, int col);
 int FindDeviceListItem(HWND hList, HANDLE hDevice);
 void StartupCallback(BOOL isChecked);
 void CreateStartupCheckbox(HWND hwnd);
+void CreateEditSettingsButton(HWND hwnd);
 
 #endif // HIDEOUS_GUI_H

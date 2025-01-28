@@ -39,6 +39,24 @@ void CreateTrayIcon(HWND hwnd)
 	Shell_NotifyIcon(NIM_ADD, &g_trayIcon);
 }
 
+void CreateEditSettingsButton(HWND hwnd)
+{
+	RECT clientRect;
+	GetClientRect(hwnd, &clientRect);
+
+	int padding = 3;
+	int buttonHeight = 24;
+	int buttonWidth = 150;
+
+	int buttonX = clientRect.right - buttonWidth - padding;
+	int buttonY = clientRect.bottom - buttonHeight - padding;
+
+	CreateWindowEx(0, L"BUTTON", L"Edit settings.ini",
+				   WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_FLAT,
+				   buttonX, buttonY, buttonWidth, buttonHeight,
+				   hwnd, (HMENU)IDC_EDIT_SETTIGNS, GetModuleHandle(NULL), NULL);
+}
+
 void CreateStartupCheckbox(HWND hwnd)
 {
 	// Read the registry key to see if the app is set to run on startup
@@ -277,7 +295,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			POINT pt;
 			GetCursorPos(&pt);
 			HMENU hMenu = CreatePopupMenu();
-			AppendMenu(hMenu, MF_STRING, IDM_RESTORE, L"Restore");
+			AppendMenu(hMenu, MF_STRING, IDM_RESTORE, L"Show window");
+			AppendMenu(hMenu, MF_STRING, IDM_SETTINGS, L"Edit settings.ini");
 			AppendMenu(hMenu, MF_STRING, IDM_EXIT, L"Exit");
 			SetForegroundWindow(hwnd);
 			TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
@@ -299,6 +318,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			ShowWindow(hwnd, SW_RESTORE);
 			SetForegroundWindow(hwnd);
+			break;
+		}
+
+		case IDM_SETTINGS:
+		case IDC_EDIT_SETTIGNS:
+		{
+			ShellExecute(NULL, L"open", L"settings.ini", NULL, NULL, SW_SHOWNORMAL);
 			break;
 		}
 

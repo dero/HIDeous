@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(HIDeous VERSION 0.9.0)
+project(HIDeous VERSION 0.12.0)
 
 # Enable Unicode in Windows
 add_definitions(-DUNICODE -D_UNICODE)

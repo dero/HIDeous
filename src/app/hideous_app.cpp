@@ -129,6 +129,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Create the checkbox for running on startup
     CreateStartupCheckbox(hwnd);
 
+    // Create the button to edit settings
+    CreateEditSettingsButton(hwnd);
+
     // Populate table
     UpdateDeviceTable(hList);
 
