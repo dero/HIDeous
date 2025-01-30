@@ -1,4 +1,4 @@
-# HIDeous: Intercept key presses, do any stuff
+# HIDeous: Turn every keyboard into a macro pad
 
 HID = [Human Interface Device](https://en.wikipedia.org/wiki/USB_human_interface_device_class)
 
