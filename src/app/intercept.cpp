@@ -43,7 +43,7 @@ int DecideOnKey(USHORT vkCode)
 
     // Check if key has a macro mapping
     const auto &macros = mappingsIt->second;
-    const auto macroIt = macros.find(keyName);
+    auto macroIt = macros.find(keyName);
 
     if (macroIt == macros.end())
     {
@@ -51,8 +51,8 @@ int DecideOnKey(USHORT vkCode)
         std::wostringstream ss;
         ss << L"0x" << std::hex << g_lastKeypress.vkCode;
 
-        const auto macroKeyIt = macros.find(ss.str());
-        if (macroKeyIt == macros.end())
+        macroIt = macros.find(ss.str());
+        if (macroIt == macros.end())
             return KEY_DECISION_LET_THROUGH; // No macro for this key
     }
 
@@ -118,7 +118,7 @@ int DecideOnKey(USHORT vkCode)
     {
         auto future = std::async(std::launch::async, [&data]()
                                  {
-                                    char* command = new char[data.size() + 1];
+                                    std::vector<char> narrowCommand(data.size() + 1);
                                     WideCharToMultiByte(
                                         // The default code page
                                         CP_ACP,
@@ -129,7 +129,7 @@ int DecideOnKey(USHORT vkCode)
                                         // The number of wide-character characters in the string, -1 if null-terminated
                                         -1,
                                         // The buffer to receive the converted string
-                                        command,
+                                        narrowCommand,
                                         // The size of the buffer
                                         data.size() + 1,
                                         // A pointer to a default character
@@ -137,13 +137,13 @@ int DecideOnKey(USHORT vkCode)
                                         // A pointer to a flag that indicates if a default character was used
                                         NULL);
 
-                                    if (command == NULL)
+                                    if (narrowCommand == NULL)
                                     {
                                         DebugLog(L"Failed to convert command to ASCII");
                                         return;
                                     } else {
                                         DebugLog(L"Sending system command: " + data);
-                                        system(command);
+                                        system(narrowCommand.data());
                                     } });
         return KEY_DECISION_BLOCK; // Macro handled
     }
