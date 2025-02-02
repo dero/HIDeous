@@ -49,7 +49,7 @@ int DecideOnKey(USHORT vkCode)
     {
         // Check for hex format as a fallback
         std::wostringstream ss;
-        ss << L"0x" << std::hex << g_lastKeypress.vkCode;
+        ss << L"0X" << std::uppercase << std::hex << g_lastKeypress.vkCode;
 
         macroIt = macros.find(ss.str());
         if (macroIt == macros.end())
@@ -118,7 +118,7 @@ int DecideOnKey(USHORT vkCode)
     {
         auto future = std::async(std::launch::async, [&data]()
                                  {
-                                    std::vector<char> narrowCommand(data.size() + 1);
+                                    char *narrowCommand = new char[data.size() + 1];
                                     WideCharToMultiByte(
                                         // The default code page
                                         CP_ACP,
@@ -137,14 +137,16 @@ int DecideOnKey(USHORT vkCode)
                                         // A pointer to a flag that indicates if a default character was used
                                         NULL);
 
-                                    if (narrowCommand == NULL)
+                                    if (narrowCommand == nullptr)
                                     {
                                         DebugLog(L"Failed to convert command to ASCII");
-                                        return;
                                     } else {
                                         DebugLog(L"Sending system command: " + data);
-                                        system(narrowCommand.data());
-                                    } });
+                                        system(narrowCommand);
+                                    }
+
+                                    delete[] narrowCommand; });
+
         return KEY_DECISION_BLOCK; // Macro handled
     }
     else

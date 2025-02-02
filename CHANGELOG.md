@@ -1,5 +1,10 @@
 # HIDeous Changelog
 
+## v0.12.1 (2025-02-02)
+
+- 🐛 Fixed a bug where the app would not accept hex codes for the keys, e.g. "0x60".
+- 🐛 Fixed a memory leak in the "run" command.
+
 ## v0.12.0 (2025-01-28)
 
 - 📝 Edit "settings.ini" using a button in the GUI or by right clicking a tray icon.
