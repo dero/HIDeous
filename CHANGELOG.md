@@ -1,5 +1,9 @@
 # HIDeous Changelog
 
+## v0.13.1 (2025-02-07)
+
+- 🐛 Fixed a bug where the app would not run due to a missing registry key.
+
 ## v0.13.0 (2025-02-07)
 
 - 👤 Added profiles. Switch between different sets of key bindinds easily.
