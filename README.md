@@ -8,6 +8,7 @@ Free Windows app that allows the keyboard lying in your drawer to be useful agai
 - [UI](#ui)
 - [Usage](#usage)
 - [Settings](#settings)
+- [Profiles](#profiles)
 - [Key names](#key-names)
 - [Similar Tools](#similar-tools)
 - [Troubleshooting & Support](#troubleshooting--support)
@@ -16,16 +17,16 @@ Free Windows app that allows the keyboard lying in your drawer to be useful agai
 
 ## Features
 
-* **Key -> Combo**: Press a single key to send a combo like `Ctrl+C`.
-* **Key -> Text**: Press a single key to send a text like `¯\_(ツ)_/¯`.
-* **Key -> Run**: Press a single key to run a command like `explorer.exe C:\Some\Path`.
-* **Profiles**: Switch between different sets of key bindings easily.
-* **Any USB keyboard**: No matter how old or cheap.
-* **Unicode support**: Emoji, math symbols, katakana? No problem.
-* **No drivers required**: Just run the `.exe`.
-* **Portable**: No installation required.
-* **Minimal UI**: Just the essentials.
-* **Configuration in `.ini`**: Simple format, set and forget.
+- **Key -> Combo**: Press a single key to send a combo like `Ctrl+C`.
+- **Key -> Text**: Press a single key to send a text like `¯\_(ツ)_/¯`.
+- **Key -> Run**: Press a single key to run a command like `explorer.exe C:\Some\Path`.
+- **Profiles**: Switch between different sets of key bindings easily.
+- **Any USB keyboard**: No matter how old or cheap.
+- **Unicode support**: Emoji, math symbols, katakana? No problem.
+- **No drivers required**: Just run the `.exe`.
+- **Portable**: No installation required.
+- **Minimal UI**: Just the essentials.
+- **Configuration in `.ini`**: Simple format, set and forget.
 
 (Granted, the last two features can be viewed as _lack of features_ by the "glass half empty" folks, but I like to think of them as _simplicity_.)
 
