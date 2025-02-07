@@ -131,10 +131,18 @@ std::unordered_map<std::wstring, WORD> keyMap = {
 	{L"'", VK_OEM_7},  // For US standard keyboards
 };
 
-/**
- * Saves path to the settings file to Windows registry.
- */
-bool persistSettingsPath(const std::wstring &path)
+SettingsManager &SettingsManager::getInstance()
+{
+	static SettingsManager instance;
+	return instance;
+}
+
+SettingsManager::SettingsManager()
+{
+	m_settings = loadSettings();
+}
+
+bool SettingsManager::persistSettingsPath(const std::wstring &path)
 {
 	HKEY hKey;
 	LONG result = RegCreateKeyExW(
@@ -165,10 +173,7 @@ bool persistSettingsPath(const std::wstring &path)
 	return (result == ERROR_SUCCESS);
 }
 
-/**
- * Retrieves path to the settings file from Windows registry.
- */
-std::wstring getAppPath()
+std::wstring SettingsManager::getAppPath()
 {
 	HKEY hKey;
 	LONG result = RegOpenKeyExW(
@@ -204,19 +209,10 @@ std::wstring getAppPath()
 	return path;
 }
 
-/**
- * Load settings from the settings file.
- *
- * The settings file is a simple INI-style file with sections and key-value pairs.
- * The Devices section contains key-value pairs of device names and device paths.
- * The other sections contain key-value pairs of key names and key mappings.
- *
- * Settings are automatically loaded when the Settings object is created.
- */
-Settings loadSettings()
+Settings SettingsManager::loadSettings()
 {
 	GlobalSettings globalSettings = {DEFAULT_DEBUG_MODE, DEFAULT_DEBUG_FILE, DEFAULT_KEY_WAIT_TIME};
-	Settings settings = {globalSettings, {}, {}};
+	Settings settings = {globalSettings, {}, {}, {}, L""};
 
 	std::wstring settingsPath = getAppPath() + L"\\settings.ini";
 	std::wifstream file(settingsPath);
@@ -290,17 +286,117 @@ Settings loadSettings()
 	return settings;
 }
 
-/**
- * Get the current settings.
- *
- * The settings are loaded from the settings file the first time this function is called.
- *
- * @return The current settings.
- */
-const Settings &getSettings()
+Settings SettingsManager::loadProfileSettings(const std::wstring &profilePath, Settings baseSettings)
 {
-	static Settings settings = loadSettings();
+	Settings settings = baseSettings;
+	std::wifstream file(profilePath);
+	file.imbue(std::locale(file.getloc(), new std::codecvt_utf8<wchar_t>));
+
+	if (!file.is_open())
+	{
+		DebugLog(L"Failed to open profile file: " + profilePath);
+		return settings;
+	}
+
+	std::wstring line;
+	std::wstring currentSection;
+
+	while (std::getline(file, line))
+	{
+		line = trim(line);
+		if (line.empty() || line[0] == L';')
+			continue;
+
+		if (line[0] == L'[' && line.back() == L']')
+		{
+			currentSection = line.substr(1, line.size() - 2);
+		}
+		else
+		{
+			// Skip lines outside of a section
+			if (currentSection.empty())
+				continue;
+
+			auto delimiterPos = line.find(L'=');
+			if (delimiterPos == std::wstring::npos)
+				continue;
+
+			// Skip Device and Global sections in profile
+			if (currentSection == L"Devices" || currentSection == L"Global")
+				continue;
+
+			std::wstring key = trim(line.substr(0, delimiterPos));
+			std::wstring value = trim(line.substr(delimiterPos + 1));
+
+			// Convert key to uppercase for case-insensitive mapping
+			std::wstring uCaseKey = key;
+			std::transform(uCaseKey.begin(), uCaseKey.end(), uCaseKey.begin(), ::towupper);
+			settings.mappings[currentSection][uCaseKey] = value;
+		}
+	}
+
+	file.close();
 	return settings;
+}
+
+std::vector<std::wstring> SettingsManager::getAvailableProfiles()
+{
+	std::vector<std::wstring> profiles;
+	std::wstring basePath = getAppPath();
+	WIN32_FIND_DATAW findData;
+	HANDLE hFind = FindFirstFileW((basePath + L"\\settings.*.ini").c_str(), &findData);
+
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		do
+		{
+			std::wstring filename = findData.cFileName;
+			if (filename.substr(0, 9) == L"settings." && filename.substr(filename.length() - 4) == L".ini")
+			{
+				profiles.push_back(filename.substr(9, filename.length() - 13));
+			}
+		} while (FindNextFileW(hFind, &findData));
+		FindClose(hFind);
+	}
+
+	return profiles;
+}
+
+bool SettingsManager::switchToProfile(const std::wstring &profileName)
+{
+	if (profileName.empty())
+	{
+		// Switch to base settings
+		m_settings = loadSettings();
+		m_settings.currentProfile = L"";
+		return true;
+	}
+
+	std::wstring profilePath = getAppPath() + L"\\settings." + profileName + L".ini";
+	if (GetFileAttributesW(profilePath.c_str()) == INVALID_FILE_ATTRIBUTES)
+	{
+		std::wstring message = L"Profile not found: " + profilePath;
+		DebugLog(message);
+		MessageBox(NULL, message.c_str(), L"Error", MB_OK | MB_ICONERROR);
+		return false;
+	}
+
+	Settings baseSettings = loadSettings();
+	m_settings = loadProfileSettings(profilePath, baseSettings);
+	m_settings.currentProfile = profileName;
+	return true;
+}
+
+/**
+ * Returns the name of the currently active profile.
+ *
+ * Returns an empty string if only the base settings are active.
+ *
+ * @return The name of the currently active profile.
+ */
+std::wstring SettingsManager::currentProfile()
+{
+	return m_settings.currentProfile;
 }
 
 /**

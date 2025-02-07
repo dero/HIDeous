@@ -1,5 +1,10 @@
 # HIDeous Changelog
 
+## v0.13.0 (2025-02-07)
+
+- 👤 Added profiles. Switch between different sets of key bindinds easily.
+- ❓ Added a "Help" button to the UI.
+
 ## v0.12.1 (2025-02-02)
 
 - 🐛 Fixed a bug where the app would not accept hex codes for the keys, e.g. "0x60".

@@ -68,7 +68,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     GetModuleFileName(NULL, processPath, MAX_PATH);
     PathRemoveFileSpec(processPath);
 
-    persistSettingsPath(processPath);
+    SettingsManager::getInstance().persistSettingsPath(processPath);
 
     // Icons
     HICON hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPICON));
@@ -129,8 +129,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Create the checkbox for running on startup
     CreateStartupCheckbox(hwnd);
 
-    // Create the button to edit settings
-    CreateEditSettingsButton(hwnd);
+    // Create the button to open help
+    CreateHelpButton(hwnd);
 
     // Populate table
     UpdateDeviceTable(hList);

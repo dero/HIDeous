@@ -19,11 +19,12 @@ Free Windows app that allows the keyboard lying in your drawer to be useful agai
 * **Key -> Combo**: Press a single key to send a combo like `Ctrl+C`.
 * **Key -> Text**: Press a single key to send a text like `¯\_(ツ)_/¯`.
 * **Key -> Run**: Press a single key to run a command like `explorer.exe C:\Some\Path`.
+* **Profiles**: Switch between different sets of key bindings easily.
 * **Any USB keyboard**: No matter how old or cheap.
 * **Unicode support**: Emoji, math symbols, katakana? No problem.
 * **No drivers required**: Just run the `.exe`.
 * **Portable**: No installation required.
-* **Minimal UI**: Just the list of keyboards connected to your computer.
+* **Minimal UI**: Just the essentials.
 * **Configuration in `.ini`**: Simple format, set and forget.
 
 (Granted, the last two features can be viewed as _lack of features_ by the "glass half empty" folks, but I like to think of them as _simplicity_.)
@@ -93,8 +94,22 @@ ADD=keys:CTRL+SHIFT+F12
 MULTIPLY=text:×
 Numpad4=run:explorer.exe C:\data\ShareX\Screenshots
 
+; Switch to the `settings.Secondary.ini` profile.
+ESCAPE=profile:Secondary
+
+
 ; That's it! Save the file and restart the app.
 ```
+
+## Profiles
+
+By default, only key bindings from the main `settings.ini` file are active.
+
+To use a different set of key bindings, create a new `.ini` file in the same directory as the app, e.g. `settings.Secondary.ini`.
+
+To switch to that profile, either select it from the UI or add a key binding with the `profile:` prefix, e.g. `ESCAPE=profile:Secondary`.
+
+This allows you to have different sets of key bindings for different tasks or applications.
 
 ## Key Names
 

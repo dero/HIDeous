@@ -10,10 +10,11 @@
 
 int DecideOnKey(USHORT vkCode)
 {
-    // Only consider keypresses within the last 30ms
+    const Settings &settings = SettingsManager::getInstance().getSettings();
     DWORD currentTime = GetTickCount();
 
-    if (currentTime - g_lastKeypress.timestamp > getSettings().global.KeyWaitTime)
+    // Only consider keypresses within the permitted time frame
+    if (currentTime - g_lastKeypress.timestamp > settings.global.KeyWaitTime)
     {
         return KEY_DECISION_LET_THROUGH; // Keypress too old
     }
@@ -23,7 +24,7 @@ int DecideOnKey(USHORT vkCode)
         return KEY_DECISION_LET_THROUGH; // Different key
     }
 
-    const auto &hashToDevice = getSettings().hashToDevice;
+    const auto &hashToDevice = settings.hashToDevice;
     const auto deviceIt = hashToDevice.find(g_lastKeypress.deviceHash);
     if (deviceIt == hashToDevice.end())
     {
@@ -31,7 +32,7 @@ int DecideOnKey(USHORT vkCode)
     }
 
     // Get macro mappings for this device
-    const auto &allMappings = getSettings().mappings;
+    const auto &allMappings = settings.mappings;
     const auto mappingsIt = allMappings.find(deviceIt->second);
     if (mappingsIt == allMappings.end())
     {
@@ -146,6 +147,19 @@ int DecideOnKey(USHORT vkCode)
                                     }
 
                                     delete[] narrowCommand; });
+
+        return KEY_DECISION_BLOCK; // Macro handled
+    }
+    else if (command == L"profile")
+    {
+        DebugLog(L"Switching to profile: " + data);
+
+        if (data == L"Default")
+        {
+            data = L""; // Default profile
+        }
+
+        SwitchToProfile(data);
 
         return KEY_DECISION_BLOCK; // Macro handled
     }

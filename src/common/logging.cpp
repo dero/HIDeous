@@ -13,7 +13,10 @@
  */
 void DebugLog(const std::wstring &message)
 {
-	if (!getSettings().global.Debug || getSettings().global.DebugFile.empty())
+	const std::wstring appPath = SettingsManager::getInstance().getAppPath();
+	const Settings &settings = SettingsManager::getInstance().getSettings();
+
+	if (!settings.global.Debug || settings.global.DebugFile.empty())
 	{
 		return;
 	}
@@ -33,7 +36,7 @@ void DebugLog(const std::wstring &message)
 	std::wofstream outputLog;
 
 	outputLog.open(
-		getAppPath() + L"\\" + getSettings().global.DebugFile,
+		appPath + L"\\" + settings.global.DebugFile,
 		std::ios_base::app);
 	outputLog << ss.str();
 	outputLog.flush();

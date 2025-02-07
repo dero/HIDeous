@@ -34,10 +34,12 @@ extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
         return CallNextHookEx(g_keyboardHook, code, wParam, lParam);
     }
 
+    const Settings &settings = SettingsManager::getInstance().getSettings();
+
     // Only process keydown events
     if (!(lParam & 0x80000000))
     {
-        if (getSettings().global.Debug)
+        if (settings.global.Debug)
         {
             // Log every hook call
             std::wostringstream ss;
@@ -67,12 +69,12 @@ extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
             wParam,
             lParam,
             SMTO_ABORTIFHUNG | SMTO_NORMAL,
-            getSettings().global.KeyWaitTime,
+            settings.global.KeyWaitTime,
             &decision);
 
         if (!sendResult)
         {
-            if (getSettings().global.Debug)
+            if (settings.global.Debug)
             {
                 DWORD error = GetLastError();
                 std::wostringstream errss;
@@ -104,8 +106,10 @@ HIDEOUS_API BOOL InstallHook()
         return FALSE;
     }
 
+    const Settings &settings = SettingsManager::getInstance().getSettings();
+
     // Log initial hook installation
-    if (getSettings().global.Debug)
+    if (settings.global.Debug)
     {
         // Log information about the target window
         DWORD targetProcessId = 0;
@@ -127,7 +131,7 @@ HIDEOUS_API BOOL InstallHook()
 
     if (!g_keyboardHook)
     {
-        if (getSettings().global.Debug)
+        if (settings.global.Debug)
         {
             DWORD error = GetLastError();
             std::wostringstream errss;
@@ -148,6 +152,8 @@ HIDEOUS_API BOOL UninstallHook()
         return FALSE;
     }
 
+    const Settings &settings = SettingsManager::getInstance().getSettings();
+
     BOOL result = UnhookWindowsHookEx(g_keyboardHook);
     if (result)
     {
@@ -156,7 +162,7 @@ HIDEOUS_API BOOL UninstallHook()
     }
     else
     {
-        if (getSettings().global.Debug)
+        if (settings.global.Debug)
         {
             DWORD error = GetLastError();
             std::wostringstream ss;
@@ -174,6 +180,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID reserved)
     {
     case DLL_PROCESS_ATTACH:
     {
+        const Settings &settings = SettingsManager::getInstance().getSettings();
+
         DisableThreadLibraryCalls(hModule);
 
         // Find the main window handle every time the DLL is loaded
@@ -184,7 +192,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID reserved)
 
         DebugLog(L"DLL loaded into process: " + std::wstring(processPath));
         DebugLog(L"Main window handle: 0x" + std::to_wstring((DWORD)(UINT_PTR)g_mainWindow));
-        DebugLog(L"Debug mode: " + std::to_wstring(getSettings().global.Debug));
+        DebugLog(L"Debug mode: " + std::to_wstring(settings.global.Debug));
 
         break;
     }

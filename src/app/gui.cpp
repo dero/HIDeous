@@ -23,6 +23,13 @@
 
 // Tray icon
 NOTIFYICONDATA g_trayIcon = {0};
+static HWND g_mainWindow = NULL;
+static bool g_isProfileSwitching = false;
+
+HWND GetMainWindow()
+{
+	return g_mainWindow;
+}
 
 void CreateTrayIcon(HWND hwnd)
 {
@@ -39,7 +46,7 @@ void CreateTrayIcon(HWND hwnd)
 	Shell_NotifyIcon(NIM_ADD, &g_trayIcon);
 }
 
-void CreateEditSettingsButton(HWND hwnd)
+void CreateHelpButton(HWND hwnd)
 {
 	RECT clientRect;
 	GetClientRect(hwnd, &clientRect);
@@ -51,10 +58,10 @@ void CreateEditSettingsButton(HWND hwnd)
 	int buttonX = clientRect.right - buttonWidth - padding;
 	int buttonY = clientRect.bottom - buttonHeight - padding;
 
-	CreateWindowEx(0, L"BUTTON", L"Edit settings.ini",
+	CreateWindowEx(0, L"BUTTON", L"Help",
 				   WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_FLAT,
 				   buttonX, buttonY, buttonWidth, buttonHeight,
-				   hwnd, (HMENU)IDC_EDIT_SETTIGNS, GetModuleHandle(NULL), NULL);
+				   hwnd, (HMENU)IDC_HELP_BUTTON, GetModuleHandle(NULL), NULL);
 }
 
 void CreateStartupCheckbox(HWND hwnd)
@@ -133,6 +140,25 @@ int FindDeviceListItem(HWND hList, HANDLE hDevice)
 		}
 	}
 	return -1;
+}
+
+void UpdateProfileSettingsLink(HWND hwnd)
+{
+	HWND hProfileLink = GetDlgItem(hwnd, IDC_PROFILE_SETTINGS_LINK);
+	std::wstring profile = SettingsManager::getInstance().currentProfile();
+
+	if (profile.empty())
+	{
+		// No profile selected (i.e. only "Default" settings)
+		ShowWindow(hProfileLink, SW_HIDE);
+	}
+	else
+	{
+		// Show the link to the profile settings file
+		std::wstring filename = L"Edit settings." + profile + L".ini";
+		SetWindowText(hProfileLink, filename.c_str());
+		ShowWindow(hProfileLink, SW_SHOW);
+	}
 }
 
 void StartupCallback(BOOL isChecked)
@@ -261,8 +287,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 
 	case WM_CREATE:
+		g_mainWindow = hwnd;
 		CreateTrayIcon(hwnd);
-
+		CreateProfileSelector(hwnd);
 		return 0;
 
 	case WM_CLOSE:
@@ -296,7 +323,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			GetCursorPos(&pt);
 			HMENU hMenu = CreatePopupMenu();
 			AppendMenu(hMenu, MF_STRING, IDM_RESTORE, L"Show window");
-			AppendMenu(hMenu, MF_STRING, IDM_SETTINGS, L"Edit settings.ini");
 			AppendMenu(hMenu, MF_STRING, IDM_EXIT, L"Exit");
 			SetForegroundWindow(hwnd);
 			TrackPopupMenu(hMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, NULL);
@@ -321,10 +347,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 
-		case IDM_SETTINGS:
-		case IDC_EDIT_SETTIGNS:
+		case IDC_HELP_BUTTON:
 		{
-			ShellExecute(NULL, L"open", L"settings.ini", NULL, NULL, SW_SHOWNORMAL);
+			ShellExecute(NULL, L"open", L"https://github.com/dero/HIDeous", NULL, NULL, SW_SHOWNORMAL);
 			break;
 		}
 
@@ -367,6 +392,68 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 		}
+
+		case IDC_PROFILE_SELECTOR:
+			if (HIWORD(wParam) == CBN_SELCHANGE)
+			{
+				// Skip if we're already in the process of switching
+				if (g_isProfileSwitching)
+					break;
+
+				HWND hCombo = (HWND)lParam;
+				int index = SendMessage(hCombo, CB_GETCURSEL, 0, 0);
+				if (index != CB_ERR)
+				{
+					WCHAR buffer[256];
+					SendMessage(hCombo, CB_GETLBTEXT, index, (LPARAM)buffer);
+					std::wstring profile = buffer;
+					std::wstring profileName = profile.substr(9); // Remove "Profile: "
+
+					if (index == 0)
+					{
+						profileName = L""; // Default profile
+					}
+
+					if (!SwitchToProfile(profileName))
+					{
+						MessageBox(hwnd, L"Failed to switch to profile", L"Error", MB_OK | MB_ICONERROR);
+					}
+				}
+			}
+			break;
+
+		case IDC_SETTINGS_LINK:
+			ShellExecute(NULL, L"open", L"settings.ini", NULL, NULL, SW_SHOWNORMAL);
+			break;
+
+		case IDC_PROFILE_SETTINGS_LINK:
+		{
+			HWND hCombo = GetDlgItem(hwnd, IDC_PROFILE_SELECTOR);
+			int index = SendMessage(hCombo, CB_GETCURSEL, 0, 0);
+			if (index > 0) // Not "Default"
+			{
+				WCHAR buffer[256];
+				SendMessage(hCombo, CB_GETLBTEXT, index, (LPARAM)buffer);
+				std::wstring profile = buffer;
+				std::wstring profileName = profile.substr(9); // Remove "Profile: "
+				std::wstring filename = L"settings." + profileName + L".ini";
+				ShellExecute(NULL, L"open", filename.c_str(), NULL, NULL, SW_SHOWNORMAL);
+			}
+			break;
+		}
+		}
+		break;
+	}
+
+	case WM_CTLCOLORSTATIC:
+	{
+		if ((HWND)lParam == GetDlgItem(hwnd, IDC_SETTINGS_LINK) ||
+			(HWND)lParam == GetDlgItem(hwnd, IDC_PROFILE_SETTINGS_LINK))
+		{
+			HDC hdcStatic = (HDC)wParam;
+			SetTextColor(hdcStatic, RGB(0, 0, 255));
+			SetBkMode(hdcStatic, TRANSPARENT);
+			return (LRESULT)GetStockObject(NULL_BRUSH);
 		}
 		break;
 	}
@@ -374,11 +461,58 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
+HWND CreateProfileSelector(HWND parent)
+{
+	// Create taller combo box (increased height from 200 to 300)
+	HWND hCombo = CreateWindowEx(0, L"COMBOBOX", NULL,
+								 WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
+								 10, 10, 200, 300, parent,
+								 (HMENU)IDC_PROFILE_SELECTOR, GetModuleHandle(NULL), NULL);
+
+	// Create the settings.ini link (moved down by 5 pixels for better spacing)
+	HWND hSettingsLink = CreateWindowEx(0, L"STATIC", L"Edit settings.ini",
+										WS_CHILD | WS_VISIBLE | SS_NOTIFY,
+										10, 40, 80, 20, parent,
+										(HMENU)IDC_SETTINGS_LINK, GetModuleHandle(NULL), NULL);
+
+	// Create the profile settings link below the first link
+	HWND hProfileLink = CreateWindowEx(0, L"STATIC", L"",
+									   WS_CHILD | SS_NOTIFY,
+									   100, 40, 150, 20, parent,
+									   (HMENU)IDC_PROFILE_SETTINGS_LINK, GetModuleHandle(NULL), NULL);
+
+	// Set the font to underlined
+	HFONT hFont = CreateFont(14, 0, 0, 0, FW_NORMAL, FALSE, TRUE, FALSE,
+							 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+							 DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+	SendMessage(hSettingsLink, WM_SETFONT, (WPARAM)hFont, TRUE);
+	SendMessage(hProfileLink, WM_SETFONT, (WPARAM)hFont, TRUE);
+
+	// Add "Default" profile first
+	SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Profile: Default");
+
+	// Get all available profiles
+	auto profiles = SettingsManager::getInstance().getAvailableProfiles();
+	for (const auto &profile : profiles)
+	{
+		const std::wstring profileName = L"Profile: " + profile;
+		SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)profileName.c_str());
+	}
+
+	// Select default profile
+	SendMessage(hCombo, CB_SETCURSEL, 0, 0);
+
+	UpdateProfileSettingsLink(parent);
+
+	return hCombo;
+}
+
+// Also update CreateDeviceTable to move it further down to accommodate the stacked links
 HWND CreateDeviceTable(HWND parent)
 {
 	HWND hList = CreateWindowEx(0, WC_LISTVIEW, NULL,
 								WS_CHILD | WS_VISIBLE | LVS_REPORT | LBS_HASSTRINGS | LVS_SHOWSELALWAYS,
-								10, 10, 700, 300, parent,
+								10, 65, 700, 260, parent, // Moved down from 45 to 65
 								(HMENU)IDC_MAIN_LIST, GetModuleHandle(NULL), NULL);
 
 	// Add styles for better selection and copying
@@ -431,6 +565,8 @@ std::vector<KeyboardDevice> GetKeyboardDevices()
 		return devices;
 	}
 
+	const Settings &settings = SettingsManager::getInstance().getSettings();
+
 	for (UINT i = 0; i < nDevices; i++)
 	{
 		if (pRawInputDeviceList[i].dwType == RIM_TYPEKEYBOARD)
@@ -447,8 +583,8 @@ std::vector<KeyboardDevice> GetKeyboardDevices()
 					dev.hash = GetShortHash(deviceName);
 
 					// Find user label if it exists
-					dev.userLabel = getSettings().hashToDevice.find(dev.hash) != getSettings().hashToDevice.end()
-										? getSettings().hashToDevice.at(dev.hash)
+					dev.userLabel = settings.hashToDevice.find(dev.hash) != settings.hashToDevice.end()
+										? settings.hashToDevice.at(dev.hash)
 										: L"Unknown";
 
 					devices.push_back(dev);
@@ -483,4 +619,52 @@ void UpdateDeviceTable(HWND hList)
 		std::wstring userLabelW(dev.userLabel.begin(), dev.userLabel.end());
 		ListView_SetItemText(hList, pos, 2, const_cast<LPWSTR>(userLabelW.c_str()));
 	}
+}
+
+bool SwitchToProfile(const std::wstring &profileName)
+{
+	const std::wstring currentProfile = SettingsManager::getInstance().currentProfile();
+
+	// Skip if we're already on the same profile
+	if (currentProfile == profileName)
+	{
+		return true;
+	}
+
+	if (SettingsManager::getInstance().switchToProfile(profileName))
+	{
+		// Set flag to prevent recursion
+		g_isProfileSwitching = true;
+
+		// Main window handle
+		HWND hwnd = GetMainWindow();
+
+		// Find and select the matching profile in the combo box
+		HWND hCombo = GetDlgItem(hwnd, IDC_PROFILE_SELECTOR);
+
+		std::wstring searchText = L"Profile: " + profileName;
+		if (profileName.empty())
+		{
+			searchText = L"Profile: Default";
+		}
+
+		int itemCount = SendMessage(hCombo, CB_GETCOUNT, 0, 0);
+		for (int i = 0; i < itemCount; i++)
+		{
+			WCHAR buffer[256];
+			SendMessage(hCombo, CB_GETLBTEXT, i, (LPARAM)buffer);
+			if (searchText == buffer)
+			{
+				SendMessage(hCombo, CB_SETCURSEL, i, 0);
+				break;
+			}
+		}
+
+		UpdateProfileSettingsLink(hwnd);
+
+		// Clear flag after we're done
+		g_isProfileSwitching = false;
+		return true;
+	}
+	return false;
 }

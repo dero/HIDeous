@@ -7,14 +7,6 @@
 #include <vector>
 #include "../common/settings.h"
 
-#define IDM_COPY_CELL 1001
-#define IDM_RESTORE 1002
-#define IDM_EXIT 1003
-#define IDC_RUN_ON_STARTUP 1004
-#define IDC_MAIN_LIST 1005
-#define IDM_SETTINGS 1006
-#define IDC_EDIT_SETTIGNS 1007
-
 #define WM_TRAYICON (WM_USER + 1)
 
 struct LastKeypress
@@ -41,6 +33,9 @@ std::wstring GetListViewCellText(HWND hList, int row, int col);
 int FindDeviceListItem(HWND hList, HANDLE hDevice);
 void StartupCallback(BOOL isChecked);
 void CreateStartupCheckbox(HWND hwnd);
-void CreateEditSettingsButton(HWND hwnd);
+void CreateHelpButton(HWND hwnd);
+HWND CreateProfileSelector(HWND parent);
+void UpdateProfileSettingsLink(HWND hwnd);
+bool SwitchToProfile(const std::wstring &profileName);
 
 #endif // HIDEOUS_GUI_H
