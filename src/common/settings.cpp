@@ -142,11 +142,11 @@ SettingsManager::SettingsManager()
 	m_settings = loadSettings();
 }
 
-bool SettingsManager::persistSettingsPath(const std::wstring &path)
+bool persistSettingsPath(const std::wstring &path)
 {
 	HKEY hKey;
 	LONG result = RegCreateKeyExW(
-		HKEY_CURRENT_USER, // or HKEY_CURRENT_USER if preferred
+		HKEY_CURRENT_USER,
 		REG_KEY_PATH,
 		0,
 		NULL,

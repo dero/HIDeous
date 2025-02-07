@@ -34,7 +34,6 @@ public:
     const Settings &getSettings() const { return m_settings; }
     std::vector<std::wstring> getAvailableProfiles();
     bool switchToProfile(const std::wstring &profileName);
-    bool persistSettingsPath(const std::wstring &path);
     std::wstring SettingsManager::currentProfile();
     std::wstring getAppPath();
 
@@ -55,5 +54,6 @@ std::wstring trim(const std::wstring &str);
 std::wstring virtualKeyCodeToString(WORD vk);
 WORD stringToVirtualKeyCode(const std::wstring &str);
 std::vector<INPUT> convertStringToInput(const std::wstring &keyString);
+bool persistSettingsPath(const std::wstring &path);
 
 extern std::unordered_map<std::wstring, WORD> keyMap;

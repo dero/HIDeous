@@ -68,7 +68,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     GetModuleFileName(NULL, processPath, MAX_PATH);
     PathRemoveFileSpec(processPath);
 
-    SettingsManager::getInstance().persistSettingsPath(processPath);
+    persistSettingsPath(processPath);
 
     // Icons
     HICON hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPICON));
