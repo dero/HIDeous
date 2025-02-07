@@ -121,7 +121,8 @@ Example of the `settings.Secondary.ini` file:
 ; REMEMBER TO RESTART THE APP AFTER CHANGING THIS FILE
 ; ----------------------------------------------------
 
-; Don't repeat the [Global] and [Devices] sections, they are always loaded from the main settings file.
+; Don't repeat the [Global] and [Devices] sections, they are always
+; loaded from the main settings file.
 
 [NumPad]
 ; Remap the 0 key to a key combination different from the main profile.
