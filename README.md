@@ -112,6 +112,25 @@ To switch to that profile, either select it from the UI or add a key binding wit
 
 This allows you to have different sets of key bindings for different tasks or applications.
 
+Example of the `settings.Secondary.ini` file:
+
+```ini
+; https://github.com/dero/HIDeous
+
+; ----------------------------------------------------
+; REMEMBER TO RESTART THE APP AFTER CHANGING THIS FILE
+; ----------------------------------------------------
+
+; Don't repeat the [Global] and [Devices] sections, they are always loaded from the main settings file.
+
+[NumPad]
+; Remap the 0 key to a key combination different from the main profile.
+Numpad0=keys:CTRL+SHIFT+ALT+F1
+
+; Switch back to the default profile.
+ESCAPE=profile:Default
+```
+
 ## Key Names
 
 You can mostly just use the intuitive name of the key, like `A`, `F1`, `SHIFT`, etc. To find out key codes for more obscure keys, you can use the UI. Press a key and its code will appear in one of the rows.
