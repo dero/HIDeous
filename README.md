@@ -18,7 +18,7 @@ Free Windows app that allows the keyboard lying in your drawer to be useful agai
 ## Features
 
 - **Key -> Combo**: Press a single key to send a combo like `Ctrl+C`.
-- **Key -> Text**: Press a single key to send a text like `¯\_(ツ)_/¯`.
+- **Key -> Text**: Press a single key to send a text like `¯\_(ツ)_/¯`. Supports control keys like `{ENTER}`!
 - **Key -> Run**: Press a single key to run a command like `explorer.exe C:\Some\Path`.
 - **Profiles**: Switch between different sets of key bindings easily.
 - **Any USB keyboard**: No matter how old or cheap.
@@ -72,7 +72,7 @@ NumPad=1A5553
 ; ✅ Edit this section to set bindings for a specific keyboard.
 ; This section configures my main keyboard.
 ;
-; `text:` prefix will send a text.
+; `text:` prefix will send a text. Use {KEY} for special keys, e.g. text:Hello{ENTER}World.
 ; `keys:` prefix will send a key combination.
 ; `run:` prefix will run a command.
 ;
@@ -131,6 +131,7 @@ Numpad0=keys:CTRL+SHIFT+ALT+F1
 ; Switch back to the default profile.
 ESCAPE=profile:Default
 ```
+
 
 ## Key Names
 
