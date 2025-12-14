@@ -36,7 +36,7 @@ HMODULE g_hookDll = nullptr;
 InstallHookFn g_installHook = nullptr;
 UninstallHookFn g_uninstallHook = nullptr;
 
-bool InstallGlobalHook()
+bool InstallGlobalHook(HWND hwnd)
 {
 
     HMODULE hDll = LoadLibrary(TEXT("hideous_hook.dll"));
@@ -45,14 +45,14 @@ bool InstallGlobalHook()
         return false;
     }
 
-    auto fnInstallHook = (BOOL(*)())GetProcAddress(hDll, "InstallHook");
+    auto fnInstallHook = (InstallHookFn)GetProcAddress(hDll, "InstallHook");
     if (!fnInstallHook)
     {
         FreeLibrary(hDll);
         return false;
     }
 
-    if (!fnInstallHook())
+    if (!fnInstallHook(hwnd))
     {
         FreeLibrary(hDll);
         return false;
@@ -69,6 +69,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     PathRemoveFileSpec(processPath);
 
     persistSettingsPath(processPath);
+
+    // Check if settings.ini exists
+    std::wstring settingsPath = std::wstring(processPath) + L"\\settings.ini";
+    if (GetFileAttributes(settingsPath.c_str()) == INVALID_FILE_ATTRIBUTES)
+    {
+        MessageBox(nullptr, TEXT("settings.ini not found. Application cannot start."), TEXT("Error"), MB_OK | MB_ICONERROR);
+        return 1;
+    }
 
     // Icons
     HICON hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPICON));
@@ -149,11 +157,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
     // Load the hook DLL
-    if (!InstallGlobalHook())
+    if (!InstallGlobalHook(hwnd))
     {
         DebugLog(L"Failed to install global keyboard hook");
         return 1;
     }
+
+    // Refresh shared memory with interested keys
+    RefreshInternalState();
 
     // Show window
     ShowWindow(hwnd, nCmdShow);

@@ -6,26 +6,13 @@
 #include <fstream>
 #include <sstream>
 
+// Shared data section to share variables across all instances of the DLL
+#pragma data_seg(".shared")
 HHOOK g_keyboardHook = nullptr;
 HWND g_mainWindow = nullptr;
-
-BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
-{
-    wchar_t className[256];
-
-    // Get the class name of the window
-    GetClassName(hwnd, className, sizeof(className));
-
-    // Check if the class name matches the one used by your application
-    if (wcscmp(className, L"HIDeous") == 0)
-    {
-        // Found the main window handle
-        g_mainWindow = hwnd;
-        return FALSE; // Stop enumeration
-    }
-
-    return TRUE; // Continue enumeration
-}
+BYTE g_interestedKeys[256] = {0}; // 0 = not interested, 1 = interested
+#pragma data_seg()
+#pragma comment(linker, "/SECTION:.shared,RWS")
 
 extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
 {
@@ -58,6 +45,13 @@ extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
         if (!IsWindow(g_mainWindow))
         {
             DebugLog(L"Target window is no longer valid!");
+            return CallNextHookEx(g_keyboardHook, code, wParam, lParam);
+        }
+
+        // Check if we are interested in this key
+        // wParam is the virtual key code
+        if (wParam < 256 && g_interestedKeys[wParam] == 0)
+        {
             return CallNextHookEx(g_keyboardHook, code, wParam, lParam);
         }
 
@@ -96,15 +90,15 @@ extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
     return CallNextHookEx(g_keyboardHook, code, wParam, lParam);
 }
 
-HIDEOUS_API BOOL InstallHook()
+HIDEOUS_API BOOL InstallHook(HWND hwnd)
 {
-    EnumWindows(EnumWindowsProc, NULL);
-
-    if (g_mainWindow == nullptr)
+    if (!IsWindow(hwnd))
     {
-        DebugLog(L"Main window not found, aborting hook installation");
+        DebugLog(L"Invalid window handle passed to InstallHook");
         return FALSE;
     }
+
+    g_mainWindow = hwnd;
 
     const Settings &settings = SettingsManager::getInstance().getSettings();
 
@@ -174,6 +168,15 @@ HIDEOUS_API BOOL UninstallHook()
     return result;
 }
 
+HIDEOUS_API void UpdateInterestedKeys(BYTE *keys)
+{
+    if (keys)
+    {
+        memcpy(g_interestedKeys, keys, 256);
+        DebugLog(L"Interested keys updated");
+    }
+}
+
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID reserved)
 {
     switch (reason)
@@ -183,9 +186,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID reserved)
         const Settings &settings = SettingsManager::getInstance().getSettings();
 
         DisableThreadLibraryCalls(hModule);
-
-        // Find the main window handle every time the DLL is loaded
-        EnumWindows(EnumWindowsProc, NULL);
 
         WCHAR processPath[MAX_PATH];
         GetModuleFileNameW(NULL, processPath, MAX_PATH);

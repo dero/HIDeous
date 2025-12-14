@@ -664,6 +664,7 @@ bool SwitchToProfile(const std::wstring &profileName)
 
 		// Clear flag after we're done
 		g_isProfileSwitching = false;
+        RefreshInternalState();
 		return true;
 	}
 	return false;

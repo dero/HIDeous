@@ -5,5 +5,6 @@
 #include <windows.h>
 
 int DecideOnKey(USHORT vkCode);
+void RefreshInternalState();
 
 #endif // INTERCEPT_H

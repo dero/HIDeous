@@ -7,6 +7,7 @@
 #include <windows.h>
 #include <future>
 #include <cstdlib>
+#include <thread>
 
 int DecideOnKey(USHORT vkCode)
 {
@@ -70,8 +71,7 @@ int DecideOnKey(USHORT vkCode)
 
     if (command == L"keys")
     {
-        auto future = std::async(std::launch::async, [&data]()
-                                 {
+        std::thread([data]() {
             // Convert key sequence to INPUT events
             std::vector<INPUT> inputs = convertStringToInput(data);
 
@@ -88,65 +88,139 @@ int DecideOnKey(USHORT vkCode)
                 SendInput(firstHalfOfInputs.size(), firstHalfOfInputs.data(), sizeof(INPUT));
                 Sleep(10); // Delay between keydown and keyup to prevent sticky keys
                 SendInput(secondHalfOfInputs.size(), secondHalfOfInputs.data(), sizeof(INPUT));
-            } });
+            }
+        }).detach();
 
         return KEY_DECISION_BLOCK; // Macro handled
     }
     else if (command == L"text")
     {
-        auto future = std::async(std::launch::async, [&data]()
-                                 {
+        std::thread([data]() {
                 DebugLog(L"Sending text: " + data);
 
-                for (wchar_t c : data)
-                {
-                    INPUT input = {0};
-                    input.type = INPUT_KEYBOARD;
-                    input.ki.wVk = 0;
-                    input.ki.wScan = c;
-                    input.ki.dwFlags = KEYEVENTF_UNICODE;
-                    input.ki.dwExtraInfo = HIDEOUS_IDENTIFIER;
-                    SendInput(1, &input, sizeof(INPUT));
-
-                    Sleep(1); // Simulate ultra-fast typing
-
-                    input.ki.dwFlags |= KEYEVENTF_KEYUP;
-                    SendInput(1, &input, sizeof(INPUT));
-                } });
+                size_t i = 0;
+                while (i < data.length()) {
+                    if (data[i] == L'{') {
+                        if (i + 1 < data.length() && data[i + 1] == L'{') {
+                            // Escaped {{ -> send {
+                            INPUT input = {0};
+                            input.type = INPUT_KEYBOARD;
+                            input.ki.wVk = 0;
+                            input.ki.wScan = L'{';
+                            input.ki.dwFlags = KEYEVENTF_UNICODE;
+                            input.ki.dwExtraInfo = HIDEOUS_IDENTIFIER;
+                            SendInput(1, &input, sizeof(INPUT));
+                            input.ki.dwFlags |= KEYEVENTF_KEYUP;
+                            SendInput(1, &input, sizeof(INPUT));
+                            i += 2;
+                        } else {
+                            // Start of a control key
+                            size_t closePos = data.find(L'}', i);
+                            if (closePos != std::wstring::npos) {
+                                std::wstring keyContent = data.substr(i + 1, closePos - i - 1);
+                                std::vector<INPUT> inputs = convertStringToInput(keyContent);
+                                
+                                // Keydowns
+                                std::vector<INPUT> firstHalfOfInputs(inputs.begin(), inputs.begin() + inputs.size() / 2);
+                                // Keyups
+                                std::vector<INPUT> secondHalfOfInputs(inputs.begin() + inputs.size() / 2, inputs.end());
+                                
+                                if (!inputs.empty()) {
+                                    SendInput(firstHalfOfInputs.size(), firstHalfOfInputs.data(), sizeof(INPUT));
+                                    Sleep(10); 
+                                    SendInput(secondHalfOfInputs.size(), secondHalfOfInputs.data(), sizeof(INPUT));
+                                }
+                                i = closePos + 1;
+                            } else {
+                                // No checking brace, treat as literal {
+                                INPUT input = {0};
+                                input.type = INPUT_KEYBOARD;
+                                input.ki.wVk = 0;
+                                input.ki.wScan = data[i];
+                                input.ki.dwFlags = KEYEVENTF_UNICODE;
+                                input.ki.dwExtraInfo = HIDEOUS_IDENTIFIER;
+                                SendInput(1, &input, sizeof(INPUT));
+                                input.ki.dwFlags |= KEYEVENTF_KEYUP;
+                                SendInput(1, &input, sizeof(INPUT));
+                                i++;
+                            }
+                        }
+                    } else if (data[i] == L'}') {
+                        if (i + 1 < data.length() && data[i + 1] == L'}') {
+                            // Escaped }} -> send }
+                            INPUT input = {0};
+                            input.type = INPUT_KEYBOARD;
+                            input.ki.wVk = 0;
+                            input.ki.wScan = L'}';
+                            input.ki.dwFlags = KEYEVENTF_UNICODE;
+                            input.ki.dwExtraInfo = HIDEOUS_IDENTIFIER;
+                            SendInput(1, &input, sizeof(INPUT));
+                            input.ki.dwFlags |= KEYEVENTF_KEYUP;
+                            SendInput(1, &input, sizeof(INPUT));
+                            i += 2;
+                        } else {
+                             // Treat as literal }
+                            INPUT input = {0};
+                            input.type = INPUT_KEYBOARD;
+                            input.ki.wVk = 0;
+                            input.ki.wScan = data[i];
+                            input.ki.dwFlags = KEYEVENTF_UNICODE;
+                            input.ki.dwExtraInfo = HIDEOUS_IDENTIFIER;
+                            SendInput(1, &input, sizeof(INPUT));
+                            input.ki.dwFlags |= KEYEVENTF_KEYUP;
+                            SendInput(1, &input, sizeof(INPUT));
+                            i++;
+                        }
+                    } else {
+                        // Regular character
+                        INPUT input = {0};
+                        input.type = INPUT_KEYBOARD;
+                        input.ki.wVk = 0;
+                        input.ki.wScan = data[i];
+                        input.ki.dwFlags = KEYEVENTF_UNICODE;
+                        input.ki.dwExtraInfo = HIDEOUS_IDENTIFIER;
+                        SendInput(1, &input, sizeof(INPUT));
+                        Sleep(1); 
+                        input.ki.dwFlags |= KEYEVENTF_KEYUP;
+                        SendInput(1, &input, sizeof(INPUT));
+                        i++;
+                    }
+                } 
+        }).detach();
         return KEY_DECISION_BLOCK; // Macro handled
     }
     else if (command == L"run")
     {
-        auto future = std::async(std::launch::async, [&data]()
-                                 {
-                                    char *narrowCommand = new char[data.size() + 1];
-                                    WideCharToMultiByte(
-                                        // The default code page
-                                        CP_ACP,
-                                        // Flags indicating invalid characters
-                                        0,
-                                        // The wide-character string
-                                        data.c_str(),
-                                        // The number of wide-character characters in the string, -1 if null-terminated
-                                        -1,
-                                        // The buffer to receive the converted string
-                                        narrowCommand,
-                                        // The size of the buffer
-                                        data.size() + 1,
-                                        // A pointer to a default character
-                                        NULL,
-                                        // A pointer to a flag that indicates if a default character was used
-                                        NULL);
+        std::thread([data]() {
+            char *narrowCommand = new char[data.size() + 1];
+            WideCharToMultiByte(
+                // The default code page
+                CP_ACP,
+                // Flags indicating invalid characters
+                0,
+                // The wide-character string
+                data.c_str(),
+                // The number of wide-character characters in the string, -1 if null-terminated
+                -1,
+                // The buffer to receive the converted string
+                narrowCommand,
+                // The size of the buffer
+                data.size() + 1,
+                // A pointer to a default character
+                NULL,
+                // A pointer to a flag that indicates if a default character was used
+                NULL);
 
-                                    if (narrowCommand == nullptr)
-                                    {
-                                        DebugLog(L"Failed to convert command to ASCII");
-                                    } else {
-                                        DebugLog(L"Sending system command: " + data);
-                                        system(narrowCommand);
-                                    }
+            if (narrowCommand == nullptr)
+            {
+                DebugLog(L"Failed to convert command to ASCII");
+            } else {
+                DebugLog(L"Sending system command: " + data);
+                system(narrowCommand);
+            }
 
-                                    delete[] narrowCommand; });
+            delete[] narrowCommand;
+        }).detach();
 
         return KEY_DECISION_BLOCK; // Macro handled
     }
@@ -169,4 +243,43 @@ int DecideOnKey(USHORT vkCode)
     }
 
     return KEY_DECISION_LET_THROUGH; // No valid command
+}
+
+void RefreshInternalState()
+{
+    HMODULE hDll = GetModuleHandle(TEXT("hideous_hook.dll"));
+    if (!hDll)
+    {
+        DebugLog(L"Could not get handle to hideous_hook.dll for optimization refresh");
+        return;
+    }
+
+    typedef void (*UpdateInterestedKeysFn)(BYTE *);
+    auto UpdateInterestedKeys = (UpdateInterestedKeysFn)GetProcAddress(hDll, "UpdateInterestedKeys");
+    if (!UpdateInterestedKeys)
+    {
+        DebugLog(L"Could not find UpdateInterestedKeys in DLL");
+        return;
+    }
+
+    BYTE interested[256] = {0};
+    const Settings &settings = SettingsManager::getInstance().getSettings();
+
+    // Iterate through all device mappings
+    for (const auto &devicePair : settings.mappings)
+    {
+        const auto &macros = devicePair.second;
+        for (const auto &macroPair : macros)
+        {
+            // macroPair.first is the Key String (e.g. "F1", "A")
+            WORD vk = stringToVirtualKeyCode(macroPair.first);
+            if (vk != 0 && vk < 256)
+            {
+                interested[vk] = 1;
+            }
+        }
+    }
+
+    UpdateInterestedKeys(interested);
+    DebugLog(L"Internal state refreshed (Shared Memory updated)");
 }

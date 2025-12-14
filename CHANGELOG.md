@@ -1,5 +1,12 @@
 # HIDeous Changelog
 
+## v0.14.0 (2025-12-14)
+
+- ⚡ Optimized the hook to only intercept keys that are actually mapped, reducing system overhead.
+- 🐛 Fixed startup initialization issues by explicitly passing window handle to the hook.
+- ✨ `text:` command now supports control keys (e.g. `{ENTER}`) and escaping.
+- ⚡ Macro execution is now asynchronous, preventing key blocking on long macros.
+
 ## v0.13.1 (2025-02-07)
 
 - 🐛 Fixed a bug where the app would not run due to a missing registry key.

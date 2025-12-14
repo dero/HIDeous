@@ -168,6 +168,11 @@ If you can read and compile C++, you can check the source code and produce the b
 
 Also, I'm actually a web engineer, not a C++ developer by trade, so the code might be a bit rough around the edges. Constructive criticism is welcome. 🙇‍♂️
 
+
+## Development
+
+Want to build it yourself? Check out [CONTRIBUTING.md](./CONTRIBUTING.md) for build instructions.
+
 ## License
 
 Do whatever you want with this. [MIT License](./LICENSE).
