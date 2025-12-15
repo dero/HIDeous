@@ -1,5 +1,11 @@
 # HIDeous Changelog
 
+## v0.14.1 (2025-12-15)
+
+- ✨ Fixed handling of composite emojis (e.g. 🔴) in `text:` command.
+- 🐛 Fixed `settings.ini` not loading correctly if it contained a BOM or different line endings.
+- ⚡ Internal refactoring of `intercept.cpp` for better maintainability.
+
 ## v0.14.0 (2025-12-14)
 
 - ⚡ Optimized the hook to only intercept keys that are actually mapped, reducing system overhead.

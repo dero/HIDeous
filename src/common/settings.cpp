@@ -7,6 +7,7 @@
 #include <windows.h>
 #include <locale>
 #include <codecvt>
+#include <iterator>
 #include "../common/logging.h"
 
 /**
@@ -209,134 +210,165 @@ std::wstring SettingsManager::getAppPath()
 	return path;
 }
 
+/**
+ * Helper to read a UTF-8 file and convert it to std::wstring using Windows API.
+ * This avoids the issues with std::codecvt on Windows where it might truncate 4-byte UTF-8 sequences.
+ */
+std::wstring ReadUtf8File(const std::wstring& path) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        return L"";
+    }
+
+    std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    if (str.empty()) {
+        return L"";
+    }
+
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
+    
+    // Remove BOM if present
+    if (!wstrTo.empty() && wstrTo[0] == 0xFEFF) {
+        wstrTo.erase(0, 1);
+    }
+
+    return wstrTo;
+}
+
 Settings SettingsManager::loadSettings()
 {
-	GlobalSettings globalSettings = {DEFAULT_DEBUG_MODE, DEFAULT_DEBUG_FILE, DEFAULT_KEY_WAIT_TIME};
-	Settings settings = {globalSettings, {}, {}, {}, L""};
+    GlobalSettings globalSettings = {DEFAULT_DEBUG_MODE, DEFAULT_DEBUG_FILE, DEFAULT_KEY_WAIT_TIME};
+    Settings settings = {globalSettings, {}, {}, {}, L""};
 
-	std::wstring settingsPath = getAppPath() + L"\\settings.ini";
-	std::wifstream file(settingsPath);
-	file.imbue(std::locale(file.getloc(), new std::codecvt_utf8<wchar_t>));
+    std::wstring settingsPath = getAppPath() + L"\\settings.ini";
+    
+    // Use the UTF-8 safe reader
+    std::wstring fileContent = ReadUtf8File(settingsPath);
+    if (fileContent.empty())
+    {
+        DebugLog(L"Failed to open settings file or file is empty");
+        // Try standard open just to be sure if it exists but empty? 
+        // Or just return default.
+        // If file doesn't exist ReadUtf8File returns empty, which is fine.
+        return settings;
+    }
 
-	if (!file.is_open())
-	{
-		DebugLog(L"Failed to open settings file");
-		return settings;
-	}
+    std::wstringstream file(fileContent);
+    std::wstring line;
+    std::wstring currentSection;
 
-	std::wstring line;
-	std::wstring currentSection;
+    while (std::getline(file, line))
+    {
+        line = trim(line);
+        if (line.empty() || line[0] == L';')
+        {
+            continue;
+        }
 
-	while (std::getline(file, line))
-	{
-		line = trim(line);
-		if (line.empty() || line[0] == L';')
-		{
-			continue;
-		}
+        if (line[0] == L'[' && line.back() == L']')
+        {
+            currentSection = line.substr(1, line.size() - 2);
+        }
+        else
+        {
+            auto delimiterPos = line.find(L'=');
+            if (delimiterPos == std::wstring::npos)
+            {
+                continue;
+            }
 
-		if (line[0] == L'[' && line.back() == L']')
-		{
-			currentSection = line.substr(1, line.size() - 2);
-		}
-		else
-		{
-			auto delimiterPos = line.find(L'=');
-			if (delimiterPos == std::wstring::npos)
-			{
-				continue;
-			}
+            std::wstring key = trim(line.substr(0, delimiterPos));
+            std::wstring value = trim(line.substr(delimiterPos + 1));
 
-			std::wstring key = trim(line.substr(0, delimiterPos));
-			std::wstring value = trim(line.substr(delimiterPos + 1));
+            if (currentSection == L"Devices")
+            {
+                settings.deviceToHash[key] = value;
+                settings.hashToDevice[value] = key;
+            }
+            else if (currentSection == L"Global")
+            {
+                if (key == L"KeyWaitTime")
+                {
+                    settings.global.KeyWaitTime = std::stoi(value);
+                }
+                else if (key == L"Debug")
+                {
+                    settings.global.Debug = (value == L"true" || value == L"1");
+                }
+                else if (key == L"DebugFile")
+                {
+                    settings.global.DebugFile = value;
+                }
+            }
+            else
+            {
+                // Convert key to uppercase in order to make the mapping case-insensitive
+                // and match the key names in the keyMap
+                std::wstring uCaseKey = key;
+                std::transform(uCaseKey.begin(), uCaseKey.end(), uCaseKey.begin(), ::towupper);
+                settings.mappings[currentSection][uCaseKey] = value;
+            }
+        }
+    }
 
-			if (currentSection == L"Devices")
-			{
-				settings.deviceToHash[key] = value;
-				settings.hashToDevice[value] = key;
-			}
-			else if (currentSection == L"Global")
-			{
-				if (key == L"KeyWaitTime")
-				{
-					settings.global.KeyWaitTime = std::stoi(value);
-				}
-				else if (key == L"Debug")
-				{
-					settings.global.Debug = (value == L"true" || value == L"1");
-				}
-				else if (key == L"DebugFile")
-				{
-					settings.global.DebugFile = value;
-				}
-			}
-			else
-			{
-				// Convert key to uppercase in order to make the mapping case-insensitive
-				// and match the key names in the keyMap
-				std::wstring uCaseKey = key;
-				std::transform(uCaseKey.begin(), uCaseKey.end(), uCaseKey.begin(), ::towupper);
-				settings.mappings[currentSection][uCaseKey] = value;
-			}
-		}
-	}
-
-	file.close();
-
-	return settings;
+    return settings;
 }
 
 Settings SettingsManager::loadProfileSettings(const std::wstring &profilePath, Settings baseSettings)
 {
-	Settings settings = baseSettings;
-	std::wifstream file(profilePath);
-	file.imbue(std::locale(file.getloc(), new std::codecvt_utf8<wchar_t>));
+    Settings settings = baseSettings;
+    
+    std::wstring fileContent = ReadUtf8File(profilePath);
+    if (fileContent.empty())
+    {
+        DebugLog(L"Failed to open profile file: " + profilePath);
+        return settings;
+    }
 
-	if (!file.is_open())
-	{
-		DebugLog(L"Failed to open profile file: " + profilePath);
-		return settings;
-	}
+    std::wstringstream file(fileContent);
 
-	std::wstring line;
-	std::wstring currentSection;
+    std::wstring line;
+    std::wstring currentSection;
 
-	while (std::getline(file, line))
-	{
-		line = trim(line);
-		if (line.empty() || line[0] == L';')
-			continue;
+    while (std::getline(file, line))
+    {
+        line = trim(line);
+        if (line.empty() || line[0] == L';')
+            continue;
 
-		if (line[0] == L'[' && line.back() == L']')
-		{
-			currentSection = line.substr(1, line.size() - 2);
-		}
-		else
-		{
-			// Skip lines outside of a section
-			if (currentSection.empty())
-				continue;
+        if (line[0] == L'[' && line.back() == L']')
+        {
+            currentSection = line.substr(1, line.size() - 2);
+        }
+        else
+        {
+            // Skip lines outside of a section
+            if (currentSection.empty())
+                continue;
 
-			auto delimiterPos = line.find(L'=');
-			if (delimiterPos == std::wstring::npos)
-				continue;
+            auto delimiterPos = line.find(L'=');
+            if (delimiterPos == std::wstring::npos)
+                continue;
 
-			// Skip Device and Global sections in profile
-			if (currentSection == L"Devices" || currentSection == L"Global")
-				continue;
+            // Skip Device and Global sections in profile
+            if (currentSection == L"Devices" || currentSection == L"Global")
+                continue;
 
-			std::wstring key = trim(line.substr(0, delimiterPos));
-			std::wstring value = trim(line.substr(delimiterPos + 1));
+            std::wstring key = trim(line.substr(0, delimiterPos));
+            std::wstring value = trim(line.substr(delimiterPos + 1));
 
-			// Convert key to uppercase for case-insensitive mapping
-			std::wstring uCaseKey = key;
-			std::transform(uCaseKey.begin(), uCaseKey.end(), uCaseKey.begin(), ::towupper);
-			settings.mappings[currentSection][uCaseKey] = value;
-		}
-	}
+            // Convert key to uppercase for case-insensitive mapping
+            std::wstring uCaseKey = key;
+            std::transform(uCaseKey.begin(), uCaseKey.end(), uCaseKey.begin(), ::towupper);
+            settings.mappings[currentSection][uCaseKey] = value;
+        }
+    }
 
-	file.close();
-	return settings;
+    return settings;
 }
 
 std::vector<std::wstring> SettingsManager::getAvailableProfiles()
@@ -407,11 +439,11 @@ std::wstring SettingsManager::currentProfile()
  */
 std::wstring trim(const std::wstring &str)
 {
-	size_t first = str.find_first_not_of(L' ');
+	size_t first = str.find_first_not_of(L" \t\r\n");
 	if (first == std::wstring::npos)
 		return L"";
 
-	size_t last = str.find_last_not_of(L' ');
+	size_t last = str.find_last_not_of(L" \t\r\n");
 	return str.substr(first, last - first + 1);
 }
 
