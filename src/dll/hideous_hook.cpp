@@ -21,6 +21,12 @@ extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
         return CallNextHookEx(g_keyboardHook, code, wParam, lParam);
     }
 
+    // Check for our own injected events
+    if ((ULONG_PTR)GetMessageExtraInfo() == HIDEOUS_IDENTIFIER)
+    {
+        return CallNextHookEx(g_keyboardHook, code, wParam, lParam);
+    }
+
     const Settings &settings = SettingsManager::getInstance().getSettings();
 
     // Only process keydown events

@@ -1,5 +1,11 @@
 # HIDeous Changelog
 
+## v0.15.2 (2025-12-20)
+
+- 🐛 Fixed issue where CAPSLOCK, NUMLOCK, and SCROLLLOCK state would toggle even when the key was blocked.
+- 🔄 Fixed potential infinite loops when sending keys that are also hooked.
+- 📝 Documented known limitation with rapid toggle key usage.
+
 ## v0.15.1 (2025-12-20)
 
 - 🐛 Fixed a bug where the app was unable to map the equals key. Use `EQUALS` instead of `=`.

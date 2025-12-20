@@ -151,6 +151,9 @@ Then there's [LuaMacros](https://www.hidmacros.eu/download.php), which is a grea
 
 And it's newer, lighter and simpler than all of them. ⚖
 
+## Known Issues
+- **Rapid Toggle Key Usage**: If you map a text macro to a toggle key (CAPSLOCK, NUMLOCK, SCROLLLOCK) and press it very rapidly, the toggle state might get out of sync (staying ON or OFF incorrectly) due to timing conditions. This is a known limitation.
+
 ## Troubleshooting & Support
 
 Try running the app as an administrator.

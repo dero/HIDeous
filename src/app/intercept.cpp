@@ -11,6 +11,32 @@
 #include <vector>
 #include <iomanip>
 
+
+void RevertToggleState(WORD vk)
+{
+    // Toggle the key again to revert the state
+    // We must ensure this input has the HIDEOUS_IDENTIFIER so our hook ignores it
+    INPUT inputs[2] = {};
+    
+    // Get correct scan code
+    WORD scanCode = static_cast<WORD>(MapVirtualKey(vk, MAPVK_VK_TO_VSC));
+
+    inputs[0].type = INPUT_KEYBOARD;
+    inputs[0].ki.wVk = vk;
+    inputs[0].ki.wScan = scanCode;
+    inputs[0].ki.dwFlags = 0; // Keydown
+    inputs[0].ki.dwExtraInfo = HIDEOUS_IDENTIFIER;
+
+    inputs[1].type = INPUT_KEYBOARD;
+    inputs[1].ki.wVk = vk;
+    inputs[1].ki.wScan = scanCode;
+    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+    inputs[1].ki.dwExtraInfo = HIDEOUS_IDENTIFIER;
+
+    SendInput(2, inputs, sizeof(INPUT));
+    DebugLog(L"Counter-input sent to revert toggle state for key: 0x" + std::to_wstring(vk));
+}
+
 void ExecuteKeys(std::wstring data) {
     // Convert key sequence to INPUT events
     std::vector<INPUT> inputs = convertStringToInput(data);
@@ -278,29 +304,43 @@ int DecideOnKey(USHORT vkCode)
     std::wstring command = macroIt->second.substr(0, colonPos);
     std::wstring data = macroIt->second.substr(colonPos + 1);
 
+    bool handled = false;
+
     if (command == L"keys")
     {
         std::thread(ExecuteKeys, data).detach();
-        return KEY_DECISION_BLOCK;
+        handled = true;
     }
     else if (command == L"text")
     {
         std::thread(ExecuteText, data).detach();
-        return KEY_DECISION_BLOCK;
+        handled = true;
     }
     else if (command == L"run")
     {
         std::thread(ExecuteRun, data).detach();
-        return KEY_DECISION_BLOCK;
+        handled = true;
     }
     else if (command == L"profile")
     {
         ExecuteProfile(data); // Synchronous
-        return KEY_DECISION_BLOCK;
+        handled = true;
     }
     else
     {
         DebugLog(L"Unknown macro command: " + command);
+    }
+
+    if (handled)
+    {
+        if (vkCode == VK_CAPITAL || vkCode == VK_NUMLOCK || vkCode == VK_SCROLL)
+        {
+             std::thread(RevertToggleState, static_cast<WORD>(vkCode)).detach();
+        }
+
+        g_lastKeypress.vkCode = 0;
+        g_lastKeypress.timestamp = 0;
+        return KEY_DECISION_BLOCK;
     }
 
     return KEY_DECISION_LET_THROUGH; // No valid command
