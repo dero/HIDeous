@@ -120,7 +120,7 @@ std::unordered_map<std::wstring, WORD> keyMap = {
 	{L"MEDIA_STOP", VK_MEDIA_STOP},
 	{L"MEDIA_PLAY_PAUSE", VK_MEDIA_PLAY_PAUSE},
 	{L";", VK_OEM_1}, // For US standard keyboards
-	{L"=", VK_OEM_PLUS},
+	{L"EQUALS", VK_OEM_PLUS}, // For US standard keyboards
 	{L",", VK_OEM_COMMA},
 	{L"-", VK_OEM_MINUS},
 	{L".", VK_OEM_PERIOD},

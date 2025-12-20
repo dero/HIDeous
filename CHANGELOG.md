@@ -1,5 +1,9 @@
 # HIDeous Changelog
 
+## v0.15.1 (2025-12-20)
+
+- 🐛 Fixed a bug where the app was unable to map the equals key. Use `EQUALS` instead of `=`.
+
 ## v0.15.0 (2025-12-20)
 
 - 🔄 **Auto-Reload Settings**: Changes to `settings.ini` or profile files are now detected and applied automatically. No more restarting the app!
