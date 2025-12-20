@@ -141,6 +141,15 @@ SettingsManager &SettingsManager::getInstance()
 SettingsManager::SettingsManager()
 {
 	m_settings = loadSettings();
+    m_stopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+}
+
+SettingsManager::~SettingsManager()
+{
+    stopWatching();
+    if (m_stopEvent) {
+        CloseHandle(m_stopEvent);
+    }
 }
 
 bool persistSettingsPath(const std::wstring &path)
@@ -429,6 +438,119 @@ bool SettingsManager::switchToProfile(const std::wstring &profileName)
 std::wstring SettingsManager::currentProfile()
 {
 	return m_settings.currentProfile;
+}
+
+void SettingsManager::startWatching(ChangeCallback callback)
+{
+    if (m_watching) return;
+    
+    m_callback = callback;
+    m_watching = true;
+    ResetEvent(m_stopEvent);
+    m_watcherThread = std::thread(&SettingsManager::watchLoop, this);
+}
+
+void SettingsManager::stopWatching()
+{
+    if (!m_watching) return;
+
+    m_watching = false;
+    if (m_stopEvent) {
+        SetEvent(m_stopEvent);
+    }
+    
+    if (m_watcherThread.joinable()) {
+        m_watcherThread.join();
+    }
+}
+
+void SettingsManager::reload()
+{
+    std::wstring current = m_settings.currentProfile;
+    if (current.empty()) {
+        m_settings = loadSettings();
+    } else {
+        Settings base = loadSettings();
+        m_settings = loadProfileSettings(getAppPath() + L"\\settings." + current + L".ini", base);
+    }
+    m_settings.currentProfile = current;
+
+    if (m_callback) {
+        m_callback();
+    }
+}
+
+void SettingsManager::watchLoop()
+{
+    std::wstring appPath = getAppPath();
+    HANDLE hDir = CreateFileW(
+        appPath.c_str(),
+        FILE_LIST_DIRECTORY,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        NULL,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+        NULL
+    );
+
+    if (hDir == INVALID_HANDLE_VALUE) return;
+
+    OVERLAPPED overlapped = {0};
+    overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+    BYTE buffer[1024];
+    HANDLE waitHandles[2] = { overlapped.hEvent, m_stopEvent };
+
+    while (m_watching) {
+        DWORD bytesReturned = 0;
+        BOOL result = ReadDirectoryChangesW(
+            hDir,
+            buffer,
+            sizeof(buffer),
+            FALSE, // Don't watch subtree (settings files are in root app path)
+            FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_FILE_NAME,
+            &bytesReturned,
+            &overlapped,
+            NULL
+        );
+
+        if (!result && GetLastError() != ERROR_IO_PENDING) break;
+
+        DWORD wait = WaitForMultipleObjects(2, waitHandles, FALSE, INFINITE);
+
+        if (wait == WAIT_OBJECT_0) {
+            // File changed
+            GetOverlappedResult(hDir, &overlapped, &bytesReturned, TRUE);
+            
+            bool shouldReload = false;
+            FILE_NOTIFY_INFORMATION* fileInfo = (FILE_NOTIFY_INFORMATION*)buffer;
+            while (fileInfo) {
+                std::wstring fileName(fileInfo->FileName, fileInfo->FileNameLength / sizeof(wchar_t));
+                if (fileName == L"settings.ini" || 
+                   (fileName.substr(0, 9) == L"settings." && fileName.substr(fileName.length() - 4) == L".ini")) {
+                    shouldReload = true;
+                    break;
+                }
+                if (fileInfo->NextEntryOffset == 0) break;
+                fileInfo = (FILE_NOTIFY_INFORMATION*)((BYTE*)fileInfo + fileInfo->NextEntryOffset);
+            }
+
+            if (shouldReload) {
+                // Debounce - wait a bit to ensure file is closed by editor
+                Sleep(200);
+                reload();
+            }
+
+            ResetEvent(overlapped.hEvent);
+        } else {
+            // stopEvent or error
+            CancelIo(hDir);
+            break;
+        }
+    }
+
+    CloseHandle(overlapped.hEvent);
+    CloseHandle(hDir);
 }
 
 /**

@@ -270,6 +270,50 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		break;
 	}
 
+	case WM_SETTINGS_CHANGED:
+	{
+		DebugLog(L"Settings changed on disk, refreshing...");
+
+		// Refresh hook DLL
+		RefreshInternalState();
+
+		// Refresh UI
+		HWND hList = GetDlgItem(hwnd, IDC_MAIN_LIST);
+		UpdateDeviceTable(hList);
+
+		// Refresh profile selector
+		HWND hCombo = GetDlgItem(hwnd, IDC_PROFILE_SELECTOR);
+		SendMessage(hCombo, CB_RESETCONTENT, 0, 0);
+		SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)L"Profile: Default");
+		auto profiles = SettingsManager::getInstance().getAvailableProfiles();
+		for (const auto &profile : profiles)
+		{
+			const std::wstring profileName = L"Profile: " + profile;
+			SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)profileName.c_str());
+		}
+
+		// Re-select current profile
+		std::wstring currentProfile = SettingsManager::getInstance().currentProfile();
+		std::wstring searchText = L"Profile: " + currentProfile;
+		if (currentProfile.empty())
+			searchText = L"Profile: Default";
+
+		int itemCount = SendMessage(hCombo, CB_GETCOUNT, 0, 0);
+		for (int i = 0; i < itemCount; i++)
+		{
+			WCHAR buffer[256];
+			SendMessage(hCombo, CB_GETLBTEXT, i, (LPARAM)buffer);
+			if (searchText == buffer)
+			{
+				SendMessage(hCombo, CB_SETCURSEL, i, 0);
+				break;
+			}
+		}
+
+		UpdateProfileSettingsLink(hwnd);
+		break;
+	}
+
 	case WM_CONTEXTMENU:
 	{
 		HWND hList = GetDlgItem(hwnd, IDC_MAIN_LIST);

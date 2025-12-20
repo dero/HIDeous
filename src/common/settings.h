@@ -3,6 +3,11 @@
 #include <string>
 #include <unordered_map>
 #include <windows.h>
+#include <vector>
+#include <functional>
+#include <thread>
+#include <atomic>
+#include <mutex>
 
 #define REG_KEY_PATH L"Software\\HIDeous"
 #define REG_VALUE_NAME L"AppPath"
@@ -37,9 +42,13 @@ public:
     std::wstring SettingsManager::currentProfile();
     std::wstring getAppPath();
 
+    using ChangeCallback = std::function<void()>;
+    void startWatching(ChangeCallback callback);
+    void stopWatching();
+
 private:
     SettingsManager();
-    ~SettingsManager() = default;
+    ~SettingsManager();
     SettingsManager(const SettingsManager &) = delete;
     SettingsManager &operator=(const SettingsManager &) = delete;
 
@@ -47,6 +56,15 @@ private:
     Settings loadProfileSettings(const std::wstring &profilePath, Settings baseSettings);
 
     Settings m_settings;
+
+    // File watching
+    std::atomic<bool> m_watching{false};
+    std::thread m_watcherThread;
+    ChangeCallback m_callback;
+    HANDLE m_stopEvent = NULL;
+
+    void watchLoop();
+    void reload();
 };
 
 // Utility functions

@@ -166,6 +166,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Refresh shared memory with interested keys
     RefreshInternalState();
 
+    // Start watching for settings changes
+    SettingsManager::getInstance().startWatching([hwnd]() {
+        PostMessage(hwnd, WM_SETTINGS_CHANGED, 0, 0);
+    });
+
     // Show window
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);

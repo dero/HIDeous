@@ -8,6 +8,7 @@
 #include "../common/settings.h"
 
 #define WM_TRAYICON (WM_USER + 1)
+#define WM_SETTINGS_CHANGED (WM_APP + 2)
 
 struct LastKeypress
 {
