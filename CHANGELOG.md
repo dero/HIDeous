@@ -1,5 +1,9 @@
 # HIDeous Changelog
 
+## v0.15.0 (2025-12-20)
+
+- 🔄 **Auto-Reload Settings**: Changes to `settings.ini` or profile files are now detected and applied automatically. No more restarting the app!
+
 ## v0.14.1 (2025-12-15)
 
 - ✨ Fixed handling of composite emojis (e.g. 🔴) in `text:` command.

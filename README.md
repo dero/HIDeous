@@ -42,7 +42,7 @@ Free Windows app that allows the keyboard lying in your drawer to be useful agai
 3. Press a key, a key code will appear in one of the rows.
 4. Note down the "Device Hash" of that keyboard.
 5. Edit `settings.ini` in the application directory.
-6. **Restart the app** and you're done! 🎉
+6. Done! 🎉 Changes are applied automatically.
 
 ## Settings
 
@@ -99,7 +99,7 @@ Numpad4=run:explorer.exe C:\data\ShareX\Screenshots
 ESCAPE=profile:Secondary
 
 
-; That's it! Save the file and restart the app.
+; That's it! Save the file and the app will reload automatically.
 ```
 
 ## Profiles
@@ -117,9 +117,9 @@ Example of the `settings.Secondary.ini` file:
 ```ini
 ; https://github.com/dero/HIDeous
 
-; ----------------------------------------------------
-; REMEMBER TO RESTART THE APP AFTER CHANGING THIS FILE
-; ----------------------------------------------------
+; --------------------------------------------------------
+; CHANGES TO THIS FILE ARE AUTOMATICALLY RELOADED BY THE APP
+; --------------------------------------------------------
 
 ; Don't repeat the [Global] and [Devices] sections, they are always
 ; loaded from the main settings file.
