@@ -13,7 +13,7 @@
  */
 void DebugLog(const std::wstring &message)
 {
-	const std::wstring appPath = SettingsManager::getInstance().getAppPath();
+	static const std::wstring appPath = SettingsManager::getInstance().getAppPath();
 	const Settings &settings = SettingsManager::getInstance().getSettings();
 
 	if (!settings.global.Debug || settings.global.DebugFile.empty())

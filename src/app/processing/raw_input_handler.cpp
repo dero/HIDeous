@@ -19,6 +19,7 @@ bool GetRawKeyData(HRAWINPUT hRawInput, RawKeyData& outData)
     {
         outData.hDevice = raw->header.hDevice;
         outData.vkCode = raw->data.keyboard.VKey;
+        outData.scanCode = raw->data.keyboard.MakeCode;
         outData.flags = raw->data.keyboard.Flags;
         return true;
     }

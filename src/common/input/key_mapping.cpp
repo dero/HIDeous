@@ -180,6 +180,27 @@ WORD stringToVirtualKeyCode(const std::wstring &str)
 	return 0;
 }
 
+bool isScanCodeString(const std::wstring &str, USHORT* outScanCode)
+{
+	if (str.length() > 2)
+	{
+		std::wstring prefix = str.substr(0, 2);
+		std::transform(prefix.begin(), prefix.end(), prefix.begin(), ::towupper);
+		
+		if (prefix == L"SC")
+		{
+			try
+			{
+				unsigned long val = std::stoul(str.substr(2));
+				if (outScanCode) *outScanCode = static_cast<USHORT>(val);
+				return true;
+			}
+			catch (...) {}
+		}
+	}
+	return false;
+}
+
 std::vector<INPUT> convertStringToInput(const std::wstring &keyString)
 {
 	std::vector<INPUT> inputs;
@@ -192,22 +213,48 @@ std::vector<INPUT> convertStringToInput(const std::wstring &keyString)
 		keys.push_back(trim(token));
 	}
 
+	// Store properties of pressed keys to release them later
+	std::vector<INPUT> pressedKeys;
+
 	// Press keys in sequence
 	for (const auto &key : keys)
 	{
 		INPUT input = {0};
 		input.type = INPUT_KEYBOARD;
-		input.ki.wVk = stringToVirtualKeyCode(key);
+		
+		// Check for SC prefix (e.g. SC28)
+		bool isScanCode = false;
+		if (key.length() > 2)
+		{
+			std::wstring prefix = key.substr(0, 2);
+			std::transform(prefix.begin(), prefix.end(), prefix.begin(), ::towupper);
+			
+			if (prefix == L"SC")
+			{
+				try
+				{
+					input.ki.wScan = static_cast<WORD>(std::stoul(key.substr(2)));
+					input.ki.dwFlags = KEYEVENTF_SCANCODE;
+					isScanCode = true;
+				}
+				catch (...) {}
+			}
+		}
+
+		if (!isScanCode)
+		{
+			input.ki.wVk = stringToVirtualKeyCode(key);
+		}
+		
 		inputs.push_back(input); // Key down
+		pressedKeys.push_back(input);
 	}
 
 	// Release keys in reverse sequence
-	for (auto it = keys.rbegin(); it != keys.rend(); ++it)
+	for (auto it = pressedKeys.rbegin(); it != pressedKeys.rend(); ++it)
 	{
-		INPUT input = {0};
-		input.type = INPUT_KEYBOARD;
-		input.ki.wVk = stringToVirtualKeyCode(*it);
-		input.ki.dwFlags = KEYEVENTF_KEYUP;
+		INPUT input = *it;
+		input.ki.dwFlags |= KEYEVENTF_KEYUP;
 		inputs.push_back(input); // Key up
 	}
 

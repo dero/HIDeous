@@ -139,6 +139,31 @@ You can mostly just use the intuitive name of the key, like `A`, `F1`, `SHIFT`, 
 
 And if that's not enough, you can find the [long list of key codes baked into the app in the source code](https://github.com/dero/HIDeous/blob/a438428b1621a1244db15162217f867ebe90bb40/src/common/settings.cpp#L19-L131).
 
+## Scan Codes
+
+Sometimes, virtual key codes (like `NUMPAD2`) change depending on the system state (e.g. NumLock). If you want to bind a specific *physical key* regardless of what the system thinks it is, you can use **Scan Codes**.
+
+The syntax is `SC<decimal_number>`, for example `SC80`.
+
+**How to find a Scan Code:**
+1. Open the HIDeous UI.
+2. Press the key you want to map.
+3. Look at the **Scan Code** column in the device list (e.g., `SC80 (0x50)`).
+4. Use the `SC80` part in your `settings.ini`.
+
+**Example:**
+```ini
+; This will trigger on the physical "2" key on the Numpad, 
+; regardless of whether NumLock is ON (Numpad2) or OFF (ArrowDown).
+SC80=text:Hello World
+```
+
+You can also use scan codes on the right side of the binding:
+```ini
+; Pressing F1 will simulate pressing the Enter key (Scan Code 28)
+F1=keys:SC28
+```
+
 ## Similar Tools
 
 How's this different from AutoHotkey or HIDMacros?

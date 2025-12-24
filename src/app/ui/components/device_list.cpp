@@ -72,6 +72,10 @@ HWND CreateDeviceTable(HWND parent)
 	lvc.cx = 150;
 	ListView_InsertColumn(hList, 3, &lvc);
 
+	lvc.pszText = L"Scan Code";
+	lvc.cx = 100;
+	ListView_InsertColumn(hList, 4, &lvc);
+
 	return hList;
 }
 
@@ -146,5 +150,7 @@ void UpdateDeviceTable(HWND hList)
 
 		std::wstring userLabelW(dev.userLabel.begin(), dev.userLabel.end());
 		ListView_SetItemText(hList, pos, 2, const_cast<LPWSTR>(userLabelW.c_str()));
+
+        // Key and Scan Code columns are initially empty
 	}
 }

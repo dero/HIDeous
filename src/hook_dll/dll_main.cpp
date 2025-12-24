@@ -11,6 +11,7 @@
 HHOOK g_keyboardHook = nullptr;
 HWND g_mainWindow = nullptr;
 BYTE g_interestedKeys[256] = {0}; // 0 = not interested, 1 = interested
+BYTE g_interestedScanCodes[256] = {0}; // 0 = not interested, 1 = interested
 #pragma data_seg()
 #pragma comment(linker, "/SECTION:.shared,RWS")
 
@@ -56,7 +57,13 @@ extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
 
         // Check if we are interested in this key
         // wParam is the virtual key code
-        if (wParam < 256 && g_interestedKeys[wParam] == 0)
+        BYTE vk = static_cast<BYTE>(wParam);
+        BYTE sc = static_cast<BYTE>((lParam >> 16) & 0xFF);
+        
+        bool interestedInVk = (vk < 256 && g_interestedKeys[vk] == 1);
+        bool interestedInSc = (sc < 256 && g_interestedScanCodes[sc] == 1);
+
+        if (!interestedInVk && !interestedInSc)
         {
             return CallNextHookEx(g_keyboardHook, code, wParam, lParam);
         }
@@ -174,13 +181,17 @@ HIDEOUS_API BOOL UninstallHook()
     return result;
 }
 
-HIDEOUS_API void UpdateInterestedKeys(BYTE *keys)
+HIDEOUS_API void UpdateInterestedKeys(BYTE *keys, BYTE *scanCodes)
 {
     if (keys)
     {
         memcpy(g_interestedKeys, keys, 256);
-        DebugLog(L"Interested keys updated");
     }
+    if (scanCodes)
+    {
+        memcpy(g_interestedScanCodes, scanCodes, 256);
+    }
+    DebugLog(L"Interested keys/scancodes updated");
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID reserved)

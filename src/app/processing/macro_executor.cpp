@@ -39,7 +39,7 @@ void RevertToggleState(WORD vk)
     DebugLog(L"Counter-input sent to revert toggle state for key: 0x" + std::to_wstring(vk));
 }
 
-int DecideOnKey(USHORT vkCode)
+int DecideOnKey(USHORT vkCode, USHORT scanCode)
 {
     const Settings &settings = SettingsManager::getInstance().getSettings();
     DWORD currentTime = GetTickCount();
@@ -88,8 +88,18 @@ int DecideOnKey(USHORT vkCode)
         ss << L"0X" << std::uppercase << std::hex << g_lastKeypress.vkCode;
 
         macroIt = macros.find(ss.str());
+        macroIt = macros.find(ss.str());
         if (macroIt == macros.end())
-            return KEY_DECISION_LET_THROUGH; // No macro for this key
+        {
+            // Fallback: Check for Scan Code trigger
+            // e.g. SC43
+            std::wostringstream scStream;
+            scStream << L"SC" << scanCode;
+            macroIt = macros.find(scStream.str());
+            
+            if (macroIt == macros.end())
+                return KEY_DECISION_LET_THROUGH; // No macro for this key
+        }
     }
 
     // Parse macro command
@@ -154,7 +164,7 @@ void RefreshInternalState()
         return;
     }
 
-    typedef void (*UpdateInterestedKeysFn)(BYTE *);
+    typedef void (*UpdateInterestedKeysFn)(BYTE *, BYTE *);
     auto UpdateInterestedKeys = (UpdateInterestedKeysFn)GetProcAddress(hDll, "UpdateInterestedKeys");
     if (!UpdateInterestedKeys)
     {
@@ -163,6 +173,7 @@ void RefreshInternalState()
     }
 
     BYTE interested[256] = {0};
+    BYTE interestedScans[256] = {0};
     const Settings &settings = SettingsManager::getInstance().getSettings();
 
     // Iterate through all device mappings
@@ -171,15 +182,26 @@ void RefreshInternalState()
         const auto &macros = devicePair.second;
         for (const auto &macroPair : macros)
         {
-            // macroPair.first is the Key String (e.g. "F1", "A")
-            WORD vk = stringToVirtualKeyCode(macroPair.first);
-            if (vk != 0 && vk < 256)
+            // macroPair.first is the Key String (e.g. "F1", "A", or "SC43")
+            USHORT scanCode = 0;
+            if (isScanCodeString(macroPair.first, &scanCode))
             {
-                interested[vk] = 1;
+                if (scanCode < 256)
+                {
+                    interestedScans[scanCode] = 1;
+                }
+            }
+            else
+            {
+                WORD vk = stringToVirtualKeyCode(macroPair.first);
+                if (vk != 0 && vk < 256)
+                {
+                    interested[vk] = 1;
+                }
             }
         }
     }
 
-    UpdateInterestedKeys(interested);
+    UpdateInterestedKeys(interested, interestedScans);
     DebugLog(L"Internal state refreshed (Shared Memory updated)");
 }

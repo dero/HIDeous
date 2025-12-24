@@ -4,6 +4,7 @@
 struct RawKeyData {
     HANDLE hDevice;
     USHORT vkCode;
+    USHORT scanCode;
     USHORT flags;
 };
 

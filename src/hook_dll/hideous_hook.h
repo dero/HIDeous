@@ -17,5 +17,5 @@ extern "C"
     HIDEOUS_API LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam);
     HIDEOUS_API BOOL InstallHook(HWND hwnd);
     HIDEOUS_API BOOL UninstallHook();
-    HIDEOUS_API void UpdateInterestedKeys(BYTE *keys);
+    HIDEOUS_API void UpdateInterestedKeys(BYTE *keys, BYTE *scanCodes);
 }

@@ -156,16 +156,22 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     // Key pressed - show VK code
                     std::wstring keyName = virtualKeyCodeToString(data.vkCode);
 
-                    // L"0x%02X (%hs)"
+                    // L"0x%02X (%hs)" -> "%hs (0x%02X)"
                     WCHAR keyText[256];
-                    swprintf_s(keyText, L"0x%02X (%s)", data.vkCode, keyName.c_str());
+                    swprintf_s(keyText, L"%s (0x%02X)", keyName.c_str(), data.vkCode);
 
                     ListView_SetItemText(hList, itemIndex, 3, keyText);
+
+                    // Show Scan Code
+                    WCHAR scanCodeText[256];
+                    swprintf_s(scanCodeText, L"SC%d (0x%02X)", data.scanCode, data.scanCode);
+                    ListView_SetItemText(hList, itemIndex, 4, scanCodeText);
                 }
                 else
                 {
                     // Key released - clear the text
                     ListView_SetItemText(hList, itemIndex, 3, L"");
+                    ListView_SetItemText(hList, itemIndex, 4, L"");
                 }
             }
         }
@@ -180,7 +186,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		DebugLog(ss.str());
 
 		// `wParam` is the virtual key code
-		return DecideOnKey((USHORT)wParam);
+        USHORT scanCode = (lParam >> 16) & 0xFF;
+		return DecideOnKey((USHORT)wParam, scanCode);
 
 		break;
 	}

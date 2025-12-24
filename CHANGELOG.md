@@ -1,5 +1,13 @@
 # HIDeous Changelog
 
+## v0.16.0 (2025-12-24)
+
+- ✨ Added **Scan Code** column to the Device List UI.
+- ✨ Added support for **Scan Codes** (`SC<number>`) in `keys:` and `text:` commands.
+- ✨ Added support for **Scan Code Triggers** (e.g., `SC80=...`) for robust physical key mapping.
+- 🎨 Updated key display format in UI to `Name (Hex)` (e.g., `ENTER (0x0D)`).
+- ⚙️ Major refactoring of the whole codebase, moving towards domain-driven design.
+
 ## v0.15.2 (2025-12-20)
 
 - 🐛 Fixed issue where CAPSLOCK, NUMLOCK, and SCROLLLOCK state would toggle even when the key was blocked.
