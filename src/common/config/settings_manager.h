@@ -39,7 +39,7 @@ public:
     const Settings &getSettings() const { return m_settings; }
     std::vector<std::wstring> getAvailableProfiles();
     bool switchToProfile(const std::wstring &profileName);
-    std::wstring SettingsManager::currentProfile();
+    std::wstring currentProfile();
     std::wstring getAppPath();
 
     using ChangeCallback = std::function<void()>;
@@ -67,11 +67,4 @@ private:
     void reload();
 };
 
-// Utility functions
-std::wstring trim(const std::wstring &str);
-std::wstring virtualKeyCodeToString(WORD vk);
-WORD stringToVirtualKeyCode(const std::wstring &str);
-std::vector<INPUT> convertStringToInput(const std::wstring &keyString);
 bool persistSettingsPath(const std::wstring &path);
-
-extern std::unordered_map<std::wstring, WORD> keyMap;

@@ -1,4 +1,4 @@
-#include "settings.h"
+#include "../config/settings_manager.h"
 #include "logging.h"
 #include <windows.h>
 #include <shlwapi.h>

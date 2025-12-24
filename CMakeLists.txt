@@ -16,5 +16,6 @@ add_definitions(
 )
 
 # Add subdirectories
-add_subdirectory(src/dll)
+add_subdirectory(src/common)
+add_subdirectory(src/hook_dll)
 add_subdirectory(src/app)
