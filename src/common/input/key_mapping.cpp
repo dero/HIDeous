@@ -233,9 +233,23 @@ std::vector<INPUT> convertStringToInput(const std::wstring &keyString)
 			{
 				try
 				{
-					input.ki.wScan = static_cast<WORD>(std::stoul(key.substr(2)));
-					input.ki.dwFlags = KEYEVENTF_SCANCODE;
+				try
+				{
+					unsigned long val = std::stoul(key.substr(2));
+					
+					if (val >= 1000)
+					{
+						input.ki.wScan = static_cast<WORD>(val - 1000);
+						input.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_EXTENDEDKEY;
+					}
+					else
+					{
+						input.ki.wScan = static_cast<WORD>(val);
+						input.ki.dwFlags = KEYEVENTF_SCANCODE;
+					}
 					isScanCode = true;
+				}
+				catch (...) {}
 				}
 				catch (...) {}
 			}

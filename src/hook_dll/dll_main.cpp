@@ -11,7 +11,7 @@
 HHOOK g_keyboardHook = nullptr;
 HWND g_mainWindow = nullptr;
 BYTE g_interestedKeys[256] = {0}; // 0 = not interested, 1 = interested
-BYTE g_interestedScanCodes[256] = {0}; // 0 = not interested, 1 = interested
+BYTE g_interestedScanCodes[2048] = {0}; // 0 = not interested, 1 = interested
 #pragma data_seg()
 #pragma comment(linker, "/SECTION:.shared,RWS")
 
@@ -58,10 +58,15 @@ extern "C" LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
         // Check if we are interested in this key
         // wParam is the virtual key code
         BYTE vk = static_cast<BYTE>(wParam);
-        BYTE sc = static_cast<BYTE>((lParam >> 16) & 0xFF);
+        USHORT sc = static_cast<USHORT>((lParam >> 16) & 0xFF);
+        // Check for extended key (bit 24)
+        if (lParam & (1 << 24))
+        {
+            sc += 1000;
+        }
         
         bool interestedInVk = (vk < 256 && g_interestedKeys[vk] == 1);
-        bool interestedInSc = (sc < 256 && g_interestedScanCodes[sc] == 1);
+        bool interestedInSc = (sc < 2048 && g_interestedScanCodes[sc] == 1);
 
         if (!interestedInVk && !interestedInSc)
         {
@@ -189,7 +194,7 @@ HIDEOUS_API void UpdateInterestedKeys(BYTE *keys, BYTE *scanCodes)
     }
     if (scanCodes)
     {
-        memcpy(g_interestedScanCodes, scanCodes, 256);
+        memcpy(g_interestedScanCodes, scanCodes, 2048);
     }
     DebugLog(L"Interested keys/scancodes updated");
 }

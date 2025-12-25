@@ -187,6 +187,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		// `wParam` is the virtual key code
         USHORT scanCode = (lParam >> 16) & 0xFF;
+        if (lParam & (1 << 24))
+        {
+            scanCode += 1000;
+        }
 		return DecideOnKey((USHORT)wParam, scanCode);
 
 		break;

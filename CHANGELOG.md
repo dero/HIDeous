@@ -1,5 +1,10 @@
 # HIDeous Changelog
 
+## v0.16.1 (2025-12-25)
+
+- ✨ Added support for **Extended Scan Codes**. Keys like Right CTRL are now `SC1029` to distinguish them from standard keys (`SC29`).
+- 🐛 Fixed ambiguity between left/right extended keys.
+
 ## v0.16.0 (2025-12-24)
 
 - ✨ Added **Scan Code** column to the Device List UI.

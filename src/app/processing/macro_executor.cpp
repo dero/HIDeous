@@ -173,7 +173,7 @@ void RefreshInternalState()
     }
 
     BYTE interested[256] = {0};
-    BYTE interestedScans[256] = {0};
+    BYTE interestedScans[2048] = {0};
     const Settings &settings = SettingsManager::getInstance().getSettings();
 
     // Iterate through all device mappings
@@ -186,7 +186,7 @@ void RefreshInternalState()
             USHORT scanCode = 0;
             if (isScanCodeString(macroPair.first, &scanCode))
             {
-                if (scanCode < 256)
+                if (scanCode < 2048)
                 {
                     interestedScans[scanCode] = 1;
                 }
