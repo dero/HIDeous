@@ -39,8 +39,8 @@ HIDeous is a specialized Windows keyboard remapping and macro application. Its p
 - **Responsibilities**: Helper functions and types used by both the App and the DLL.
 - **Modules**:
   - **config/**: `settings_manager.cpp` (Singleton for loading/saving INI files, profile management, and file watching).
-  - **input/**: `key_mapping.cpp` (Virtual Key Code string conversion helpers).
-  - **utils/**: 
+    - `key_mapping.cpp`: Virtual Key Code string conversion helpers and Scan Code parsing.
+    - `utils/**`: 
     - `logging.cpp`: Thread-safe file logging.
     - `crypto.cpp`: Device name hashing.
     - `string_utils.cpp`: String manipulation helpers.
@@ -48,8 +48,21 @@ HIDeous is a specialized Windows keyboard remapping and macro application. Its p
 ## Architecture Notes
 1. **Hooking Mechanism**: The app installs a global hook. The DLL is injected into all processes.
 2. **Device Discrimination**: Windows Hooks do *not* provide device information. Raw Input *does* provide device info but cannot block keys. HIDeous correlates the two events (Hook + Raw Input) based on timing to match a keypress to a specific device.
-3. **Optimization (Shared Memory)**: The DLL maintains a shared memory bitmask (`g_interestedKeys`) of all keys that are mapped to macros. If a key is not in this list, the DLL lets it through immediately without checking with the main app. This drastically reduces IPC/Message overhead.
+3. **Optimization (Shared Memory)**: The DLL maintains two shared memory bitmasks:
+    - `g_interestedKeys` (256 bytes): Virtual Key Bloom filter.
+    - `g_interestedScanCodes` (2048 bytes): Scan Code Bloom filter (supporting extended keys).
+    If a key is not in either list, the DLL lets it through immediately.
 4. **Command Pattern**: Macro execution is handled via a dispatcher in `macro_executor.cpp` which delegates to specific command handlers in `src/app/processing/commands/`.
+
+## Keypress Flow
+
+Detailed flow is documented in [KEYPRESS_FLOW.md](docs/KEYPRESS_FLOW.md).
+
+## Extended Key Handling
+The application handles "Extended Keys" (like Right Ctrl, Arrow Keys, Numpad Enter) by tracking the extended bit in the scan code.
+- **Raw Input**: Checks for `RI_KEY_E0` or `RI_KEY_E1` flags. Adds `+1000` to the internal scan code representation.
+- **Hook**: Checks bit 24 of `lParam`. Adds `+1000` to the scan code.
+- **Effect**: allows users to bind `Left Ctrl` separately from `Right Ctrl`.
 
 ## Build System
 - **Tool**: CMake

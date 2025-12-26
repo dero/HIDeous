@@ -1,5 +1,9 @@
 # HIDeous Changelog
 
+## v0.16.2 (2025-12-26)
+
+- 🐛 Fixed a bug where switching profiles would not clear bindings from the previous profile.
+
 ## v0.16.1 (2025-12-25)
 
 - ✨ Added support for **Extended Scan Codes**. Keys like Right CTRL are now `SC1029` to distinguish them from standard keys (`SC29`).

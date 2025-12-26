@@ -265,6 +265,7 @@ bool SettingsManager::switchToProfile(const std::wstring &profileName)
 	}
 
 	Settings baseSettings = loadSettings();
+	baseSettings.mappings.clear(); // Fix: Clear mappings to avoid inheriting bindings from the default profile
 	m_settings = loadProfileSettings(profilePath, baseSettings);
 	m_settings.currentProfile = profileName;
 	return true;
